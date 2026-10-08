@@ -30,7 +30,7 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 - **Phase 0** (layout, frameworks, scorecard, template, first transcript): done — PR https://github.com/SharmilNK/PRD-Agent/pull/1 (open)
 - **Phase 1** (PRD Writer agent, orchestrator, structure eval, 13 tests, CI): done — PR https://github.com/SharmilNK/PRD-Agent/pull/2 (open, stacked on PR 1)
 - **Phase 2** (Guardrails agent, orchestrator step 1, 35 tests total): done — PR https://github.com/SharmilNK/PRD-Agent/pull/3 (open, stacked on PR 2)
-- **Phase 3** (Research agents + source checks, 61 tests total): done — branch `claude/optimistic-faraday-rl7bty-phase3`, PR stacked on PR 3
+- **Phase 3** (Research agents + source checks, 61 tests total): done — PR https://github.com/SharmilNK/PRD-Agent/pull/4 (open, stacked on PR 3)
 - First test input: `data/transcripts/storyml-newsletter.md` (ML/AI concepts taught as stories, 3 tracks, 3-tier quizzes)
 
 ## Pending tasks (in order)
