@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "scale": "1 = poor, 3 = acceptable, 5 = excellent (ready for a senior review at a large tech company)",
+  "pass_average": 3.5,
+  "criteria": [
+    {"id": "problem_clarity", "name": "Problem clarity", "question": "Is the problem, the user and why-now clear and specific?"},
+    {"id": "evidence_quality", "name": "Evidence quality", "question": "Are claims backed by the transcript or graded sources, with assumptions clearly marked?"},
+    {"id": "logic_consistency", "name": "Logic and consistency", "question": "Do goals, requirements, scores, risks and launch plan agree with each other? No contradictions?"},
+    {"id": "security", "name": "Security and privacy", "question": "Are auth, data protection, secrets and LLM risks (prompt injection, data leakage) covered concretely for this product?"},
+    {"id": "responsible_ai", "name": "Responsible AI", "question": "Fairness, safety, transparency, accountability, EU AI Act duties - specific to this product?"},
+    {"id": "observability", "name": "Observability", "question": "Logs, quality monitoring, cost and latency tracking, alerts, prompt/model versioning?"},
+    {"id": "explainability", "name": "Explainability", "question": "Do users see sources, confidence and limits of AI output?"},
+    {"id": "performance", "name": "Performance and scalability", "question": "Latency, scale, availability and cost targets that fit the product?"},
+    {"id": "right_sized_plan", "name": "Right-sized plan", "question": "Does version 1 test the riskiest assumption with the simplest build, without over-engineering?"},
+    {"id": "plain_language", "name": "Plain language", "question": "Short sentences, jargon explained, readable by a non-expert?"}
+  ]
+}

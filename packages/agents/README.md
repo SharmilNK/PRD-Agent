@@ -4,9 +4,9 @@ One folder per agent. Each has a `prompt.md` (the instructions, versioned) and P
 
 | Agent | Phase | Status |
 |---|---|---|
-| PRD Writer | 1 | planned |
-| Guardrails | 2 | planned |
-| Market, Standards, Tech research | 3 | planned |
-| Advocate (with context) and Skeptic (no context) | 4 | planned |
-| Scorer / Judge | 4 | planned |
-| Reviewer | 5 | planned |
+| [PRD Writer](prd_writer/) | 1 | done |
+| [Guardrails](guardrails/) | 2 | done |
+| [Market, Standards, Tech research](research/) | 3 | done |
+| [Advocate (with context) and Skeptic (no context)](debate/) | 4 | done |
+| [Scorer / Judge](scorer/) | 4 | done |
+| [Reviewer](reviewer/) | 5 | done |
