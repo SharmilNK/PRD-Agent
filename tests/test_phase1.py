@@ -7,11 +7,11 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
 
 from apps.orchestrator import run as orchestrator
 from evals.check_structure import check_prd, template_sections
 from packages.agents.prd_writer import agent
+from tests.fakes import FakeClient as _FakeClient
 
 TRANSCRIPT = agent.REPO_ROOT / "data" / "transcripts" / "storyml-newsletter.md"
 
@@ -25,36 +25,8 @@ def sample_prd() -> str:
     return "\n\n".join(parts) + "\n"
 
 
-class FakeStream:
-    def __init__(self, message):
-        self.message = message
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
-
-    def get_final_message(self):
-        return self.message
-
-
-class FakeClient:
-    def __init__(self, text=None, stop_reason="end_turn"):
-        self.calls = []
-        usage = SimpleNamespace(input_tokens=1000, output_tokens=2000,
-                                cache_creation_input_tokens=0, cache_read_input_tokens=None)
-        message = SimpleNamespace(
-            content=[SimpleNamespace(type="thinking", thinking=""),
-                     SimpleNamespace(type="text", text=text if text is not None else sample_prd())],
-            stop_reason=stop_reason, stop_details=None, model=agent.MODEL, usage=usage,
-        )
-        self.beta = SimpleNamespace(messages=SimpleNamespace(stream=self._stream))
-        self._message = message
-
-    def _stream(self, **kwargs):
-        self.calls.append(kwargs)
-        return FakeStream(self._message)
+def FakeClient(text=None, stop_reason="end_turn"):
+    return _FakeClient(prd_text=sample_prd() if text is None else text, stop_reason=stop_reason)
 
 
 class PromptTests(unittest.TestCase):
@@ -67,6 +39,11 @@ class PromptTests(unittest.TestCase):
     def test_user_message_wraps_transcript(self):
         msg = agent.build_user_message("  hello  ")
         self.assertIn("<transcript>\nhello\n</transcript>", msg)
+        self.assertNotIn("guardrail_notes", msg)
+
+    def test_user_message_includes_guardrail_notes(self):
+        msg = agent.build_user_message("hello", notes=["Mention data privacy"])
+        self.assertIn("<guardrail_notes>\n- Mention data privacy\n</guardrail_notes>", msg)
 
     def test_prompt_version_is_stable(self):
         system = agent.build_system_prompt()
@@ -85,7 +62,7 @@ class WritePRDTests(unittest.TestCase):
     def test_request_parameters(self):
         client = FakeClient()
         agent.write_prd("idea", client=client)
-        kwargs = client.calls[0]
+        kwargs = client.stream_calls[0]
         self.assertEqual(kwargs["model"], "claude-opus-5-5")
         self.assertEqual(kwargs["thinking"], {"type": "adaptive"})
         self.assertEqual(kwargs["extra_body"], {"fallbacks": "default"})
@@ -137,7 +114,7 @@ class OrchestratorTests(unittest.TestCase):
             saved = json.loads(next(met.glob("*.json")).read_text())
             self.assertEqual(saved, metrics)
             self.assertTrue(saved["structure_check"]["passed"])
-            self.assertEqual(saved["steps"][0]["agent"], "prd_writer")
+            self.assertEqual([s["agent"] for s in saved["steps"]], ["guardrails", "prd_writer"])
 
 
 if __name__ == "__main__":
