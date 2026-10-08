@@ -10,22 +10,22 @@ import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from packages.agents.common import (
+    FALLBACK_BETA,
+    MODEL,
+    estimate_cost,
+    get_client,
+    text_of,
+    usage_dict,
+)
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PROMPT_PATH = Path(__file__).with_name("prompt.md")
 TEMPLATE_PATH = REPO_ROOT / "packages" / "templates" / "PRD_TEMPLATE.md"
 SCORECARD_PATH = REPO_ROOT / "packages" / "frameworks" / "scorecard.json"
 
-MODEL = "claude-opus-5-5"
 MAX_TOKENS = 64000
 EFFORT = "high"
-
-# USD per million tokens for claude-opus-5-5 (cache write = 1.25x input).
-PRICE_PER_MTOK = {
-    "input_tokens": 4.00,
-    "output_tokens": 20.00,
-    "cache_creation_input_tokens": 5.00,
-    "cache_read_input_tokens": 0.20,
-}
 
 
 class PRDWriterError(RuntimeError):
@@ -63,26 +63,25 @@ def prompt_version(system_prompt: str) -> str:
     return hashlib.sha256(system_prompt.encode()).hexdigest()[:12]
 
 
-def build_user_message(transcript: str) -> str:
-    return (
+def build_user_message(transcript: str, notes: list[str] | None = None) -> str:
+    """The transcript, plus any notes from earlier agents (e.g. guardrail concerns)."""
+    message = (
         "Write the PRD for the product described in this transcript.\n\n"
         f"<transcript>\n{transcript.strip()}\n</transcript>"
     )
+    if notes:
+        bullets = "\n".join(f"- {n}" for n in notes)
+        message += (
+            "\n\nNotes from the Guardrails agent. Address each one in the PRD "
+            "(sections 10, 11 or 17):\n"
+            f"<guardrail_notes>\n{bullets}\n</guardrail_notes>"
+        )
+    return message
 
 
-def estimate_cost(usage: dict) -> float:
-    return round(
-        sum(usage.get(k, 0) * price for k, price in PRICE_PER_MTOK.items()) / 1_000_000, 6
-    )
-
-
-def write_prd(transcript: str, client=None) -> PRDResult:
+def write_prd(transcript: str, client=None, notes: list[str] | None = None) -> PRDResult:
     """Call Claude once and return the PRD Markdown plus usage numbers."""
-    if client is None:
-        import anthropic
-
-        client = anthropic.Anthropic()
-
+    client = get_client(client)
     system_prompt = build_system_prompt()
 
     # Streaming avoids HTTP timeouts on long outputs.
@@ -91,11 +90,11 @@ def write_prd(transcript: str, client=None) -> PRDResult:
     with client.beta.messages.stream(
         model=MODEL,
         max_tokens=MAX_TOKENS,
-        betas=["server-side-fallback-2026-07-01"],
+        betas=[FALLBACK_BETA],
         thinking={"type": "adaptive"},
         output_config={"effort": EFFORT},
         system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": build_user_message(transcript)}],
+        messages=[{"role": "user", "content": build_user_message(transcript, notes)}],
         extra_body={"fallbacks": "default"},
     ) as stream:
         message = stream.get_final_message()
@@ -106,15 +105,14 @@ def write_prd(transcript: str, client=None) -> PRDResult:
     if message.stop_reason == "max_tokens":
         raise PRDWriterError("PRD was cut off at max_tokens; raise MAX_TOKENS or lower EFFORT.")
 
-    markdown = "".join(b.text for b in message.content if b.type == "text").strip()
+    markdown = text_of(message)
     if not markdown:
         raise PRDWriterError("Model returned no text.")
 
-    usage = {k: getattr(message.usage, k, 0) or 0 for k in PRICE_PER_MTOK}
     return PRDResult(
         markdown=markdown + "\n",
         model=message.model,
         stop_reason=message.stop_reason,
         prompt_version=prompt_version(system_prompt),
-        usage=usage,
+        usage=usage_dict(message),
     )
