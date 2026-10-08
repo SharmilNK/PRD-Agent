@@ -185,7 +185,8 @@ class OrchestratorDebateTests(unittest.TestCase):
     def test_skip_debate(self):
         client = FakeClient()
         metrics, _ = self._run(client, do_debate=False)
-        self.assertEqual(client.debate_calls, [])
+        roles = {role for role, _ in client.debate_calls}
+        self.assertFalse(roles & {"advocate", "skeptic", "scorer"})
         self.assertNotIn("evaluation", metrics)
         self.assertNotIn("<evaluation>", client.stream_calls[0]["messages"][0]["content"])
 

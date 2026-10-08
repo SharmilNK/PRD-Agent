@@ -115,7 +115,7 @@ class OrchestratorTests(unittest.TestCase):
             self.assertEqual(saved, metrics)
             self.assertTrue(saved["structure_check"]["passed"])
             self.assertEqual([s["agent"] for s in saved["steps"]], ["guardrails", "research:market", "research:standards", "research:tech",
-                              "debate", "scorer", "prd_writer"])
+                              "debate", "scorer", "prd_writer", "reviewer", "prd_writer:revision"])
 
 
 if __name__ == "__main__":

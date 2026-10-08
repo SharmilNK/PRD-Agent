@@ -91,10 +91,24 @@ def build_user_message(transcript: str, notes: list[str] | None = None, research
 
 
 def write_prd(transcript: str, client=None, notes: list[str] | None = None, research: str = "",
-              evaluation: str = "") -> PRDResult:
-    """Call Claude once and return the PRD Markdown plus usage numbers."""
+              evaluation: str = "", draft: str = "", feedback: str = "") -> PRDResult:
+    """Call Claude once and return the PRD Markdown plus usage numbers.
+
+    With `draft` and `feedback`, Claude revises the draft instead of writing from scratch.
+    The system prompt is the same either way, so the revision reuses the prompt cache.
+    """
     client = get_client(client)
     system_prompt = build_system_prompt()
+    user_message = build_user_message(transcript, notes, research, evaluation)
+    if draft:
+        user_message += (
+            "\n\nYou already wrote this draft:\n"
+            f"<draft_prd>\n{draft.strip()}\n</draft_prd>\n\n"
+            "A reviewer found these problems:\n"
+            f"<review_findings>\n{feedback.strip()}\n</review_findings>\n\n"
+            "Fix every problem listed. Keep everything else that is correct. "
+            "Return the full revised PRD, starting with `# PRD:`."
+        )
 
     # Streaming avoids HTTP timeouts on long outputs.
     # fallbacks="default": if a safety classifier declines, the API retries on
@@ -106,7 +120,7 @@ def write_prd(transcript: str, client=None, notes: list[str] | None = None, rese
         thinking={"type": "adaptive"},
         output_config={"effort": EFFORT},
         system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": build_user_message(transcript, notes, research, evaluation)}],
+        messages=[{"role": "user", "content": user_message}],
         extra_body={"fallbacks": "default"},
     ) as stream:
         message = stream.get_final_message()
