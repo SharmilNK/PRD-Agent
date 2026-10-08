@@ -1,10 +1,9 @@
 # PRD-Agent
 
+How an AI product goes from **idea to launch (0 to 1)**
 Turn a requirements transcript into a professional **PRD.md** using a team of AI agents and real product-management frameworks.
 
-This is also a learning project: how an AI product goes from **idea to launch (0 to 1)**.
-
-## How it will work
+## How it works
 
 ```
 Transcript → Reader → Guardrails → Research (Market, Standards, Tech)
