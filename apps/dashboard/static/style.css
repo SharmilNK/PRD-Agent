@@ -88,7 +88,7 @@ svg .crosshair { stroke: var(--axis); stroke-width: 1; }
 
 .table-wrap { overflow-x: auto; margin-top: 10px; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
-th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
 th { color: var(--text-secondary); font-weight: 600; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 

@@ -46,16 +46,20 @@ def create_message(client, *, system: str, user: str, effort: str, error: type[E
     output_config = {"effort": effort}
     if output_format:
         output_config["format"] = output_format
-    message = get_client(client).beta.messages.create(
-        model=MODEL,
-        max_tokens=max_tokens,
-        betas=[FALLBACK_BETA],
-        thinking={"type": "adaptive"},
-        output_config=output_config,
-        system=system,
-        messages=[{"role": "user", "content": user}],
-        extra_body={"fallbacks": "default"},
-    )
+    from packages.observability.tracing import span
+
+    with span(f"llm:{label}", effort=effort) as s:
+        message = get_client(client).beta.messages.create(
+            model=MODEL,
+            max_tokens=max_tokens,
+            betas=[FALLBACK_BETA],
+            thinking={"type": "adaptive"},
+            output_config=output_config,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+            extra_body={"fallbacks": "default"},
+        )
+        s.record_message(message, system)
     if message.stop_reason == "refusal":
         raise error(f"{label}: model declined: {getattr(message, 'stop_details', None)}")
     if message.stop_reason == "max_tokens":
@@ -74,18 +78,22 @@ def run_tool_turn(client, *, system: str, user: str, tools: list[dict], effort: 
     client = get_client(client)
     messages = [{"role": "user", "content": user}]
     content, usage, searches = [], {}, 0
-    for _ in range(max_continuations + 1):
-        message = client.beta.messages.create(
-            model=MODEL,
-            max_tokens=max_tokens,
-            betas=[FALLBACK_BETA],
-            thinking={"type": "adaptive"},
-            output_config={"effort": effort},
-            system=system,
-            tools=tools,
-            messages=messages,
-            extra_body={"fallbacks": "default"},
-        )
+    from packages.observability.tracing import span
+
+    for attempt in range(max_continuations + 1):
+        with span(f"llm:{label}", effort=effort, attempt=attempt, tools=[t["type"] for t in tools]) as s:
+            message = client.beta.messages.create(
+                model=MODEL,
+                max_tokens=max_tokens,
+                betas=[FALLBACK_BETA],
+                thinking={"type": "adaptive"},
+                output_config={"effort": effort},
+                system=system,
+                tools=tools,
+                messages=messages,
+                extra_body={"fallbacks": "default"},
+            )
+            s.record_message(message, system)
         for k, v in usage_dict(message).items():
             usage[k] = usage.get(k, 0) + v
         server = getattr(message.usage, "server_tool_use", None)

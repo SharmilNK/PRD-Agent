@@ -6,6 +6,7 @@ Events (choose with ALERT_ON, comma-separated; default: all):
   blocked      guardrails stopped the run
   quality_fail the quality gate failed
   error        a pipeline step failed
+  budget       the cost budget was reached and optional steps were skipped
 
 Sending uses Gmail's SMTP server with an app password (Python standard library only):
   GMAIL_ADDRESS       the Gmail account that sends the alert
@@ -28,7 +29,7 @@ from email.message import EmailMessage
 from pathlib import Path
 
 SMTP_HOST, SMTP_PORT = "smtp.gmail.com", 465
-EVENTS = ("new", "updated", "blocked", "quality_fail", "error")
+EVENTS = ("new", "updated", "blocked", "quality_fail", "error", "budget")
 SECTION_RE = re.compile(r"^##\s+(\d+)\.\s+(.+?)\s*$", re.MULTILINE)
 
 
@@ -71,6 +72,8 @@ def detect_events(metrics: dict, old_prd: str | None, new_prd: str | None) -> tu
         events.append("quality_fail")
     if any("error" in s for s in metrics["steps"]):
         events.append("error")
+    if (metrics.get("budget") or {}).get("skipped"):
+        events.append("budget")
     return events, changes
 
 
@@ -95,7 +98,7 @@ def build_alert(metrics: dict, events: list[str], changes: dict, issues: list[in
     headline = {"new": "New PRD", "updated": "PRD updated", "blocked": "Run blocked"}.get(
         next((e for e in events if e in ("new", "updated", "blocked")), ""), "PRD run")
     flags = [x for x, on in (("quality gate FAILED", "quality_fail" in events),
-                             ("step failed", "error" in events)) if on]
+                             ("step failed", "error" in events), ("budget reached", "budget" in events)) if on]
     subject = f"[PRD-Agent] {headline}: {name}"
     if metrics["status"] != "blocked":
         subject += f" | verdict {verdict} | quality {metrics.get('quality_gate', '-')}"
@@ -115,6 +118,9 @@ def build_alert(metrics: dict, events: list[str], changes: dict, issues: list[in
     failed = [s["agent"] for s in metrics["steps"] if "error" in s]
     if failed:
         rows.append(("Failed steps", ", ".join(failed)))
+    budget = metrics.get("budget") or {}
+    if budget.get("skipped"):
+        rows.append(("Budget", f"${budget['limit_usd']:.2f} reached; skipped {', '.join(budget['skipped'])}"))
 
     change_lines = [f"{label}: {', '.join(items)}" for label, items in
                     (("Added", changes.get("added", [])), ("Changed", changes.get("changed", [])),

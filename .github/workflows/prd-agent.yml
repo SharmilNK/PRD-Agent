@@ -44,6 +44,8 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           ALERT_TO: ${{ secrets.ALERT_TO }}
           DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+          # Cost limit per run in USD (optional repo variable); default 10.
+          PRD_AGENT_MAX_COST_USD: ${{ vars.PRD_AGENT_MAX_COST_USD }}
           # Passed as environment variables (never pasted into the script) to avoid injection.
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
@@ -55,7 +57,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/outputs data/metrics data/decisions
+          git add data/outputs data/metrics data/decisions data/traces
           if git diff --cached --quiet; then
             echo "Nothing to commit."
           else
