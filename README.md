@@ -39,12 +39,33 @@ evals/            quality checks
 Every score names a framework and evidence. See [`packages/frameworks/`](packages/frameworks/README.md).
 The PRD template and where each section comes from: [`packages/templates/`](packages/templates/SOURCES.md).
 
+## Run it
+
+```bash
+pip install -r requirements.txt
+export ANTHROPIC_API_KEY=...        # or: ant auth login
+
+# See the prompt without calling the API (free)
+python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --dry-run
+
+# Generate the PRD
+python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md
+```
+
+Each run writes:
+- `data/outputs/<transcript-name>/PRD.md` — the PRD
+- `data/metrics/<run-id>.json` — model, prompt version, tokens, cost, time, structure check
+
+Check any PRD's structure: `python -m evals.check_structure data/outputs/storyml-newsletter/PRD.md`
+
+Run the tests (no API key needed): `python -m unittest discover -s tests -t .`
+
 ## Roadmap
 
 | Phase | What | Status |
 |---|---|---|
 | 0 | Repo layout, templates, framework rubrics, first transcript | done |
-| 1 | One agent: transcript → PRD.md | next |
+| 1 | One agent: transcript → PRD.md | done |
 | 2 | Guardrails agent | |
 | 3 | Market, Standards, Tech research agents with citations | |
 | 4 | Advocate vs. Skeptic debate + Scorer | |
