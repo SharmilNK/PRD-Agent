@@ -1,5 +1,6 @@
-# SKILLS.md — standing instructions
+# SKILLS.md 
 
+Standing instructions for the agent
 > How to work on this project, every session. Change only when the user changes a rule.
 
 ## 1. Talking to the user
