@@ -27,42 +27,33 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 | 2026-10-08 | Research: Market 8 / Standards 6 / Tech 5 searches; Standards uses official-site allow-list; sources graded A-D by rules; invented links rejected; numbers need 2 sites (ADR-0004) |
 | 2026-10-08 | Debate: stateless calls, Skeptic gets only pitch + debate (enforced by code + tests); 2 rounds + closing. Scorer: GUCCI + 10 criteria via JSON schema; code validates and computes verdict (ADR-0005) |
 | 2026-10-08 | Reviewer: free checks (structure, links only from research, scores match) + web-fetch spot-check of up to 5 links + rubric review; one revision max; quality gate = checks pass and rubric >= 3.5; eval harness with 4 cases, not in CI (ADR-0006) |
+| 2026-10-08 | GitHub logging: run log (index.json + RUN_LOG.md) always on; issues via stdlib urllib with fingerprints (no duplicates, auto-close only checked kinds); Action on push to data/transcripts on main + manual; publish kept separate from pipeline (ADR-0007) |
 | 2026-10-08 | Verdict rules clarified: Go = avg >= 3.5 and every criterion >= 3; No-Go = avg < 2.5 or ethics = 1; else Pivot |
 
 ## Current status
-- **Phase 0** (layout, frameworks, scorecard, template, first transcript): done — PR https://github.com/SharmilNK/PRD-Agent/pull/1 (open)
-- **Phase 1** (PRD Writer agent, orchestrator, structure eval, 13 tests, CI): done — PR https://github.com/SharmilNK/PRD-Agent/pull/2 (open, stacked on PR 1)
-- **Phase 2** (Guardrails agent, orchestrator step 1, 35 tests total): done — PR https://github.com/SharmilNK/PRD-Agent/pull/3 (open, stacked on PR 2)
-- **Phase 3** (Research agents + source checks, 61 tests total): done — PR https://github.com/SharmilNK/PRD-Agent/pull/4 (open, stacked on PR 3)
-- **Phase 4** (Debate + Scorer, 82 tests total): done — PR https://github.com/SharmilNK/PRD-Agent/pull/5 (open, stacked on PR 4)
-- **Phase 5** (Reviewer, quality checks, revision, eval harness, 104 tests total): done — PR https://github.com/SharmilNK/PRD-Agent/pull/6 (open, stacked on PR 5)
+- **Phases 0-5 are merged to `main`** (PRs 1-6, plus PR 8). 104 tests at that point.
+- **Phase 6** (run log, GitHub issues, Action): done — branch `claude/optimistic-faraday-rl7bty-phase6`, PR into `main`
 - First test input: `data/transcripts/storyml-newsletter.md` (ML/AI concepts taught as stories, 3 tracks, 3-tier quizzes)
 
 ## Where to resume
-- Latest work is on branch `claude/optimistic-faraday-rl7bty-phase5` (each phase branch is stacked on the one before).
-- PRs 1-5 were merged on 2026-10-08, but PRs 2-5 merged into their *parent phase branches*, not `main` (stacked PRs). So `main` only has Phase 0. PR 6 (Phase 5) is still open.
-- Fix (waiting on the user's OK): one PR from `claude/optimistic-faraday-rl7bty-phase5` into `main`. It contains every phase and these memory files.
-- Until that is merged, `main` does NOT have these files. A new session should check out the phase5 branch first:
-  `git fetch origin && git checkout claude/optimistic-faraday-rl7bty-phase5`
-- Next step: Phase 6 on a new branch `claude/optimistic-faraday-rl7bty-phase6` stacked on phase5, one PR per phase.
-- Phase 6 idea (proposed, not yet approved in detail): after each run, auto-create GitHub issues for critical/major Reviewer findings, record decisions and metrics in the repo, and a GitHub Action that runs the pipeline when a new transcript is added to `data/transcripts/`.
+- Phases 6-9 are built as stacked branches: phase6 (from `main`) → phase7 → phase8 → phase9, one PR each.
+- **All Phase 6-9 PRs target `main` directly** (not the previous phase branch), so nothing gets stranded again. Until earlier PRs merge, a later PR also shows the earlier phases' changes. Merge in order: 6 → 7 → 8 → 9.
 
 ## Pending tasks (in order)
-1. Keep building Phases 6-9 (user will test at the end). Then user reviews and merges PRs in order (1, 2, 3, ...). **Important:** new cloud sessions start from `main`, so these memory files only load in new sessions after merge.
+1. Keep building Phases 7-9 (user will test at the end). Then user reviews and merges PRs in order (6 → 7 → 8 → 9). **Important:** new cloud sessions start from `main`, so these memory files only load in new sessions after merge.
 2. First real run: `python -m evals.run_evals --cheap`, then full run on the StoryML transcript (needs `pip install -r requirements.txt` + API key). Not done yet: the cloud environment blocked pypi.org (403).
-3. Phase 6: GitHub auto-logging (issues, decisions, metrics) + Actions.
-4. Phase 7: Slack / Gmail notifications.
-5. Phase 8: Dashboard (GitHub Pages) + live local reload.
-6. Phase 9: Observability (tracing, cost tracking).
+3. Phase 7: Gmail alerts on PRD updates (user chose Gmail).
+4. Phase 8: Dashboard (GitHub Pages) + live local reload.
+5. Phase 9: Observability (tracing, cost tracking).
 
 ## Open questions
 - Cloud environment: allow `pypi.org` and `files.pythonhosted.org` so the SDK can be installed and tested in cloud sessions?
-- Should Claude watch the open PRs (1-6) and auto-fix CI / review comments? (asked, no answer yet)
 
 ## Known issues
 - PyPI blocked in the cloud environment → real API runs must happen on the user's computer for now.
 
 ## Session log (newest first)
+- 2026-10-08 — New session: found Phases 0-5 merged to main. Built Phase 6 (run log, GitHub issues, Action).
 - 2026-10-08 — Session ended by user after Phase 5. All work committed and pushed. Resume with Phase 6.
 - 2026-10-08 — Built Phase 5 (Reviewer, evals). common.run_tool_turn shared by research + link check.
 - 2026-10-08 — Built Phase 4 (Debate, Scorer). PRD Writer prompt v3 copies scores; common.create_message helper added.
