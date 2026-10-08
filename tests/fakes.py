@@ -74,6 +74,32 @@ def sample_scores(score=4, **overrides):
     }
 
 
+def sample_review(findings=None, score=4):
+    """A valid Reviewer answer (no serious findings by default)."""
+    from packages.agents.reviewer.agent import load_rubric
+
+    return {
+        "findings": findings if findings is not None else [
+            {"severity": "minor", "section": "14", "category": "performance", "issue": "No latency target.",
+             "fix": "Add a page-load target."}],
+        "rubric": {c["id"]: score for c in load_rubric()["criteria"]},
+        "summary": "Solid draft.",
+    }
+
+
+def fetch_result_block(url, text):
+    """A web_fetch result block that includes the page text."""
+    doc = SimpleNamespace(type="document", source=SimpleNamespace(type="text", media_type="text/plain", data=text))
+    return SimpleNamespace(type="web_fetch_tool_result",
+                           content=SimpleNamespace(type="web_fetch_result", url=url, content=doc))
+
+
+def link_message(checks, pages=()):
+    """checks: list of dicts for Claude's report; pages: list of (url, text) fetched."""
+    text = "```json\n" + json.dumps({"checks": checks}) + "\n```"
+    return _message(text, extra_blocks=[fetch_result_block(u, t) for u, t in pages])
+
+
 class _Stream:
     def __init__(self, message):
         self.message = message
@@ -92,27 +118,44 @@ class FakeClient:
     """`stream` answers the PRD Writer; `create` answers the Guardrails review."""
 
     def __init__(self, prd_text="# PRD: Test\n", stop_reason="end_turn", review=None, review_stop_reason="end_turn",
-                 research=None, scores=None, fail=None):
+                 research=None, scores=None, fail=None, prd_review=None, link_reply=None):
         """research: dict of agent kind -> list of messages (returned in order) or an Exception to raise.
-        scores: Scorer JSON (dict or str). fail: dict of role ("advocate", "skeptic", "scorer") -> Exception."""
+        scores: Scorer JSON (dict or str). prd_review: Reviewer JSON (dict or str).
+        link_reply: message for the link check. fail: dict of role -> Exception
+        (roles: "advocate", "skeptic", "scorer", "reviewer", "link_check")."""
         self.stream_calls, self.create_calls, self.research_calls = [], [], []
         self.debate_calls = []  # (role, kwargs) for advocate / skeptic / scorer
         self._research = research or {}
         self._scores = scores if isinstance(scores, str) else json.dumps(scores or sample_scores())
         self._fail = fail or {}
+        self._prd_review = prd_review if isinstance(prd_review, str) else json.dumps(prd_review or sample_review())
+        self._link_reply = link_reply
+        self.link_calls, self.revision_calls = [], []
         self._prd = _message(prd_text, stop_reason)
         review_text = review if isinstance(review, str) else json.dumps(review or ALLOW_REVIEW)
         self._review = _message(review_text, review_stop_reason)
         self.beta = SimpleNamespace(messages=SimpleNamespace(stream=self._stream, create=self._create))
 
     def _stream(self, **kwargs):
+        if "<draft_prd>" in kwargs["messages"][0]["content"]:
+            self.revision_calls.append(kwargs)
         self.stream_calls.append(kwargs)
         return _Stream(self._prd)
 
     def _create(self, **kwargs):
+        if "tools" in kwargs and kwargs["tools"][0]["type"].startswith("web_fetch"):
+            self.link_calls.append(kwargs)
+            if "link_check" in self._fail:
+                raise self._fail["link_check"]
+            return self._link_reply or _message('```json\n{"checks": []}\n```')
         if "tools" in kwargs:
             return self._research_reply(kwargs)
         system = kwargs["system"]
+        if "doing the final review of a PRD" in system:
+            self.debate_calls.append(("reviewer", kwargs))
+            if "reviewer" in self._fail:
+                raise self._fail["reviewer"]
+            return _message(self._prd_review)
         for role, marker in (("advocate", "You are the Advocate"), ("skeptic", "You are the Skeptic"),
                              ("scorer", "You are the Scorer")):
             if marker in system:

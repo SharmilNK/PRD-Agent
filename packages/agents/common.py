@@ -63,3 +63,43 @@ def create_message(client, *, system: str, user: str, effort: str, error: type[E
     if not text_of(message):
         raise error(f"{label}: model returned no text.")
     return message
+
+
+def run_tool_turn(client, *, system: str, user: str, tools: list[dict], effort: str,
+                  error: type[Exception], label: str, max_tokens: int = 16000, max_continuations: int = 3):
+    """One turn with server-side tools (web search / web fetch), resuming `pause_turn` stops.
+
+    Returns (final message, every content block from all responses, summed usage, web searches used).
+    """
+    client = get_client(client)
+    messages = [{"role": "user", "content": user}]
+    content, usage, searches = [], {}, 0
+    for _ in range(max_continuations + 1):
+        message = client.beta.messages.create(
+            model=MODEL,
+            max_tokens=max_tokens,
+            betas=[FALLBACK_BETA],
+            thinking={"type": "adaptive"},
+            output_config={"effort": effort},
+            system=system,
+            tools=tools,
+            messages=messages,
+            extra_body={"fallbacks": "default"},
+        )
+        for k, v in usage_dict(message).items():
+            usage[k] = usage.get(k, 0) + v
+        server = getattr(message.usage, "server_tool_use", None)
+        searches += getattr(server, "web_search_requests", 0) or 0
+        content.extend(message.content)
+        if message.stop_reason != "pause_turn":
+            break
+        # Resume the paused turn: send everything the assistant produced so far, with no new user message.
+        messages = messages[:1] + [{"role": "assistant", "content": list(content)}]
+    else:
+        raise error(f"{label}: turn was still paused after {max_continuations} continuations.")
+
+    if message.stop_reason == "refusal":
+        raise error(f"{label}: model declined: {getattr(message, 'stop_details', None)}")
+    if message.stop_reason == "max_tokens":
+        raise error(f"{label}: answer was cut off at max_tokens.")
+    return message, content, usage, searches

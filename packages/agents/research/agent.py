@@ -15,15 +15,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from packages.agents.common import (
-    FALLBACK_BETA,
-    MODEL,
-    WEB_SEARCH_USD,
-    estimate_cost,
-    get_client,
-    text_of,
-    usage_dict,
-)
+from packages.agents.common import WEB_SEARCH_USD, estimate_cost, run_tool_turn, text_of
 from packages.agents.research import sources
 from packages.agents.research.config import AGENTS
 
@@ -107,51 +99,23 @@ def collect_evidence(content: list) -> tuple[dict[str, dict], dict[str, list[str
     return results, citations
 
 
-def _add_usage(total: dict, message) -> int:
-    for k, v in usage_dict(message).items():
-        total[k] = total.get(k, 0) + v
-    server = getattr(message.usage, "server_tool_use", None)
-    return getattr(server, "web_search_requests", 0) or 0
-
-
 def run_research(kind: str, transcript: str, client=None) -> ResearchResult:
     if kind not in AGENTS:
         raise ValueError(f"Unknown research agent: {kind}")
-    client = get_client(client)
     cfg = AGENTS[kind]
 
-    messages = [{
-        "role": "user",
-        "content": "Research this product idea. Use your focus topics.\n\n"
-                   f"<transcript>\n{transcript.strip()}\n</transcript>",
-    }]
-    content, usage, searches = [], {}, 0
-
-    for _ in range(MAX_CONTINUATIONS + 1):
-        message = client.beta.messages.create(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            betas=[FALLBACK_BETA],
-            thinking={"type": "adaptive"},
-            output_config={"effort": EFFORT},
-            system=system_prompt(kind),
-            tools=[search_tool(kind)],
-            messages=messages,
-            extra_body={"fallbacks": "default"},
-        )
-        searches += _add_usage(usage, message)
-        content.extend(message.content)
-        if message.stop_reason != "pause_turn":
-            break
-        # Resume the paused turn: send everything the assistant produced so far, with no new user message.
-        messages = messages[:1] + [{"role": "assistant", "content": list(content)}]
-    else:
-        raise ResearchError(f"{kind}: search turn was still paused after {MAX_CONTINUATIONS} continuations.")
-
-    if message.stop_reason == "refusal":
-        raise ResearchError(f"{kind}: model declined: {getattr(message, 'stop_details', None)}")
-    if message.stop_reason == "max_tokens":
-        raise ResearchError(f"{kind}: answer was cut off at max_tokens.")
+    message, content, usage, searches = run_tool_turn(
+        client,
+        system=system_prompt(kind),
+        user="Research this product idea. Use your focus topics.\n\n"
+             f"<transcript>\n{transcript.strip()}\n</transcript>",
+        tools=[search_tool(kind)],
+        effort=EFFORT,
+        error=ResearchError,
+        label=kind,
+        max_tokens=MAX_TOKENS,
+        max_continuations=MAX_CONTINUATIONS,
+    )
 
     data = extract_json(text_of(message))
     results, citations = collect_evidence(content)
