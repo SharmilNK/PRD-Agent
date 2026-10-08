@@ -3,11 +3,14 @@
 Steps so far:
   1. Guardrails  - mask personal data, check injection / topic / risk. May stop the run.
   2. Research    - Market, Standards and Tech agents search the web (in parallel); sources are graded.
-  3. PRD Writer  - writes the PRD from the cleaned transcript, guardrail notes and research brief.
+  3. Debate      - Advocate (full context) pitches; Skeptic (pitch only) challenges for 2 rounds.
+  4. Scorer      - GUCCI + scorecard with frameworks and evidence; code computes Go / Pivot / No-Go.
+  5. PRD Writer  - writes the PRD from the cleaned transcript, guardrail notes, research and evaluation.
 
 Each run writes:
   data/outputs/<transcript-name>/guardrails.json
   data/outputs/<transcript-name>/research/<agent>.json and research_brief.md
+  data/outputs/<transcript-name>/debate.md and scorecard.json
   data/outputs/<transcript-name>/PRD.md          (unless guardrails blocked the run)
   data/metrics/<run-id>.json                     (per-step model, prompt version, tokens, cost, time)
 
@@ -16,6 +19,7 @@ Usage:
     python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --dry-run
     python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --skip-guardrail-review
     python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --skip-research
+    python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --skip-debate
 """
 
 from __future__ import annotations
@@ -30,10 +34,12 @@ from pathlib import Path
 
 from evals.check_structure import check_prd
 from packages.agents.common import WEB_SEARCH_USD
+from packages.agents.debate import agent as debate
 from packages.agents.guardrails import agent as guardrails
 from packages.agents.prd_writer import agent as prd_writer
 from packages.agents.research import agent as research
 from packages.agents.research.config import AGENTS as RESEARCH_AGENTS
+from packages.agents.scorer import agent as scorer
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUTPUTS_DIR = REPO_ROOT / "data" / "outputs"
@@ -89,6 +95,44 @@ def run_research_step(transcript: str, client, out_dir: Path) -> tuple[list, dic
     return results, failed, steps
 
 
+def run_evaluation_step(transcript: str, brief: str, notes: list[str], client, out_dir: Path) -> tuple[str, list[dict], dict]:
+    """Debate, then Scorer. Returns (evaluation text for the PRD Writer, metric steps, summary).
+
+    A failure is recorded and the run continues; the PRD Writer then scores on its own.
+    """
+    steps, summary = [], {}
+    try:
+        result, d_time = _timed(debate.run_debate, transcript, research=brief, notes=notes, client=client)
+    except ImportError:
+        raise
+    except Exception as e:  # noqa: BLE001
+        error = f"{type(e).__name__}: {e}"
+        return "", [{"agent": "debate", "error": error, "cost_usd": 0.0, "duration_s": 0.0}], {"error": error}
+
+    debate_md = result.transcript_md()
+    (out_dir / "debate.md").write_text(debate_md)
+    steps.append({"agent": "debate", "model": result.model, "calls": result.calls, "rounds": debate.ROUNDS,
+                  "usage": result.usage, "cost_usd": result.cost_usd, "duration_s": d_time})
+    try:
+        scores, s_time = _timed(scorer.run_scorer, transcript, research=brief, debate_md=debate_md, client=client)
+    except ImportError:
+        raise
+    except Exception as e:  # noqa: BLE001
+        error = f"{type(e).__name__}: {e}"
+        steps.append({"agent": "scorer", "error": error, "cost_usd": 0.0, "duration_s": 0.0})
+        closing = f"Skeptic closing statement (Scorer failed, score the idea yourself):\n{result.closing}"
+        return closing, steps, {"error": error}
+
+    (out_dir / "scorecard.json").write_text(json.dumps(scores.to_json(), indent=2) + "\n")
+    steps.append({"agent": "scorer", "model": scores.model, "verdict": scores.verdict, "average": scores.average,
+                  "issues": len(scores.issues), "usage": scores.usage, "cost_usd": scores.cost_usd,
+                  "duration_s": s_time})
+    summary = {"verdict": scores.verdict, "average": scores.average,
+               "scores": {k: v["score"] for k, v in scores.scores.items()}, "issues": scores.issues}
+    evaluation = scores.brief_for_prd(scorer.load_scorecard()) + "\n\nSkeptic closing statement:\n" + result.closing
+    return evaluation, steps, summary
+
+
 def run(
     transcript_path: Path,
     client=None,
@@ -96,6 +140,7 @@ def run(
     metrics_dir: Path = METRICS_DIR,
     guardrail_review: bool = True,
     do_research: bool = True,
+    do_debate: bool = True,
 ) -> dict:
     transcript = transcript_path.read_text()
     name = transcript_path.stem
@@ -131,10 +176,18 @@ def run(
             metrics["research_failed"] = failed
             brief = (out_dir / "research_brief.md").read_text()
 
-        # Step 3: PRD Writer
+        # Steps 3-4: Debate and Scorer
+        evaluation = ""
+        if do_debate:
+            evaluation, eval_steps, metrics["evaluation"] = run_evaluation_step(
+                report.sanitized_transcript, brief, report.notes_for_prd, client, out_dir
+            )
+            steps.extend(eval_steps)
+
+        # Step 5: PRD Writer
         result, p_time = _timed(
             prd_writer.write_prd, report.sanitized_transcript, client=client,
-            notes=report.notes_for_prd, research=brief,
+            notes=report.notes_for_prd, research=brief, evaluation=evaluation,
         )
         prd_path = out_dir / "PRD.md"
         prd_path.write_text(result.markdown)
@@ -173,6 +226,9 @@ def dry_run(transcript_path: Path) -> None:
         print(f"  - {kind}: up to {cfg['max_searches']} searches, {sites}")
     max_search_cost = sum(c["max_searches"] for c in RESEARCH_AGENTS.values()) * WEB_SEARCH_USD
     print(f"  Max search cost: ${max_search_cost:.2f} (plus tokens)")
+    print(f"Debate:         {debate.ROUNDS} rounds, {2 * debate.ROUNDS + 2} calls "
+          "(Advocate has full context; Skeptic sees only the pitch)")
+    print(f"Scorer:         GUCCI + {len(scorer.load_scorecard()['criteria'])} criteria; verdict computed by code")
     print(f"System prompt:  {len(system_prompt):,} characters")
     print(f"User message:   {len(user_message):,} characters")
     print("\n--- user message to PRD Writer ---\n" + user_message)
@@ -185,6 +241,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--skip-guardrail-review", action="store_true",
                         help="run only the rule-based guardrails (skip the Claude review)")
     parser.add_argument("--skip-research", action="store_true", help="skip the web research agents")
+    parser.add_argument("--skip-debate", action="store_true", help="skip the Advocate/Skeptic debate and Scorer")
     args = parser.parse_args(argv)
 
     if args.dry_run:
@@ -193,7 +250,7 @@ def main(argv: list[str]) -> int:
 
     try:
         metrics = run(args.transcript, guardrail_review=not args.skip_guardrail_review,
-                      do_research=not args.skip_research)
+                      do_research=not args.skip_research, do_debate=not args.skip_debate)
     except ImportError:
         print("The anthropic package is missing. Run: pip install -r requirements.txt", file=sys.stderr)
         return 1
@@ -217,6 +274,14 @@ def main(argv: list[str]) -> int:
                 g = step["grades"]
                 print(f"{step['agent']:<17}{step['searches']} searches, {step['claims_accepted']} claims kept "
                       f"(A:{g['A']} B:{g['B']} C:{g['C']} D:{g['D']}), {step['claims_rejected']} rejected")
+
+    ev = metrics.get("evaluation")
+    if ev and "error" in ev:
+        print(f"Debate/Scorer:   FAILED - {ev['error']}")
+    elif ev:
+        print(f"Verdict:         {ev['verdict'].upper().replace('_', '-')} (average {ev['average']}/5)")
+        if ev["issues"]:
+            print(f"Scoring issues:  {len(ev['issues'])} (see scorecard.json)")
 
     check = metrics["structure_check"]
     print(f"PRD written:     {metrics['output']}")

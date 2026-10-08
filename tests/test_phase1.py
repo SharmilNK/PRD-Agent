@@ -114,7 +114,8 @@ class OrchestratorTests(unittest.TestCase):
             saved = json.loads(next(met.glob("*.json")).read_text())
             self.assertEqual(saved, metrics)
             self.assertTrue(saved["structure_check"]["passed"])
-            self.assertEqual([s["agent"] for s in saved["steps"]], ["guardrails", "research:market", "research:standards", "research:tech", "prd_writer"])
+            self.assertEqual([s["agent"] for s in saved["steps"]], ["guardrails", "research:market", "research:standards", "research:tech",
+                              "debate", "scorer", "prd_writer"])
 
 
 if __name__ == "__main__":

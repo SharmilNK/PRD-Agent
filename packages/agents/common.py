@@ -38,3 +38,28 @@ def text_of(message) -> str:
 
 # Web search is billed per search, on top of tokens.
 WEB_SEARCH_USD = 0.01  # $10 per 1,000 searches
+
+
+def create_message(client, *, system: str, user: str, effort: str, error: type[Exception],
+                   label: str, max_tokens: int = 16000, output_format: dict | None = None):
+    """One non-streaming Claude call with the project defaults. Raises `error` on refusal or truncation."""
+    output_config = {"effort": effort}
+    if output_format:
+        output_config["format"] = output_format
+    message = get_client(client).beta.messages.create(
+        model=MODEL,
+        max_tokens=max_tokens,
+        betas=[FALLBACK_BETA],
+        thinking={"type": "adaptive"},
+        output_config=output_config,
+        system=system,
+        messages=[{"role": "user", "content": user}],
+        extra_body={"fallbacks": "default"},
+    )
+    if message.stop_reason == "refusal":
+        raise error(f"{label}: model declined: {getattr(message, 'stop_details', None)}")
+    if message.stop_reason == "max_tokens":
+        raise error(f"{label}: answer was cut off at max_tokens.")
+    if not text_of(message):
+        raise error(f"{label}: model returned no text.")
+    return message

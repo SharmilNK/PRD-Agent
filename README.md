@@ -15,10 +15,12 @@ Transcript → Reader → Guardrails → Research (Market, Standards, Tech)
 
 An **orchestrator** runs the agents in order and passes data between them.
 
-**Built so far:** Guardrails → Research (Market, Standards, Tech) → PRD Writer.
+**Built so far:** Guardrails → Research (Market, Standards, Tech) → Debate (Advocate vs. Skeptic) → Scorer → PRD Writer.
 - **Guardrails** masks personal data and secrets, spots prompt-injection text, and asks Claude whether the transcript is a real product idea and how risky it is (EU AI Act levels). It ends with allow, warn (continue with notes) or block (stop).
 - **Research** agents search the web at the same time (8 / 6 / 5 searches; Standards uses official sites only). Plain code grades every source A-D and rejects invented links. See [`packages/agents/research/`](packages/agents/research/README.md).
-- **PRD Writer** writes the PRD from the cleaned transcript, addresses every guardrail note, and cites the checked research with links and grades.
+- **Debate:** the Advocate (full context) pitches and the Skeptic (sees only the pitch) challenges for 2 rounds. See [`packages/agents/debate/`](packages/agents/debate/README.md).
+- **Scorer** runs GUCCI, scores 10 criteria with frameworks and evidence; code checks the scores and computes Go / Pivot / No-Go. See [`packages/agents/scorer/`](packages/agents/scorer/README.md).
+- **PRD Writer** writes the PRD from the cleaned transcript, addresses every guardrail note, cites the checked research, and copies the scores unchanged.
 
 ## Repo layout (monorepo)
 
@@ -54,13 +56,14 @@ export ANTHROPIC_API_KEY=...        # or: ant auth login
 python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --dry-run
 
 # Generate the PRD
-# Options: --skip-guardrail-review (rules only), --skip-research (no web search)
+# Options: --skip-guardrail-review (rules only), --skip-research (no web search), --skip-debate
 python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md
 ```
 
 Each run writes:
 - `data/outputs/<transcript-name>/guardrails.json` — what the Guardrails agent found (allow / warn / block)
 - `data/outputs/<transcript-name>/research/*.json` and `research_brief.md` — checked research with sources
+- `data/outputs/<transcript-name>/debate.md` and `scorecard.json` — the debate and the scores with the verdict
 - `data/outputs/<transcript-name>/PRD.md` — the PRD (skipped if guardrails block the run)
 - `data/metrics/<run-id>.json` — model, prompt version, tokens, cost, time, structure check
 
@@ -76,7 +79,7 @@ Run the tests (no API key needed): `python -m unittest discover -s tests -t .`
 | 1 | One agent: transcript → PRD.md | done |
 | 2 | Guardrails agent | done |
 | 3 | Market, Standards, Tech research agents with citations | done |
-| 4 | Advocate vs. Skeptic debate + Scorer | |
+| 4 | Advocate vs. Skeptic debate + Scorer | done |
 | 5 | Reviewer + evals | |
 | 6 | GitHub auto-logging + Actions | |
 | 7 | Slack / Gmail alerts | |
