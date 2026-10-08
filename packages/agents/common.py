@@ -35,3 +35,6 @@ def estimate_cost(usage: dict) -> float:
 
 def text_of(message) -> str:
     return "".join(b.text for b in message.content if b.type == "text").strip()
+
+# Web search is billed per search, on top of tokens.
+WEB_SEARCH_USD = 0.01  # $10 per 1,000 searches

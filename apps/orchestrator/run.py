@@ -2,10 +2,12 @@
 
 Steps so far:
   1. Guardrails  - mask personal data, check injection / topic / risk. May stop the run.
-  2. PRD Writer  - writes the PRD from the cleaned transcript and the guardrail notes.
+  2. Research    - Market, Standards and Tech agents search the web (in parallel); sources are graded.
+  3. PRD Writer  - writes the PRD from the cleaned transcript, guardrail notes and research brief.
 
 Each run writes:
   data/outputs/<transcript-name>/guardrails.json
+  data/outputs/<transcript-name>/research/<agent>.json and research_brief.md
   data/outputs/<transcript-name>/PRD.md          (unless guardrails blocked the run)
   data/metrics/<run-id>.json                     (per-step model, prompt version, tokens, cost, time)
 
@@ -13,6 +15,7 @@ Usage:
     python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md
     python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --dry-run
     python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --skip-guardrail-review
+    python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --skip-research
 """
 
 from __future__ import annotations
@@ -21,12 +24,16 @@ import argparse
 import json
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
 from evals.check_structure import check_prd
+from packages.agents.common import WEB_SEARCH_USD
 from packages.agents.guardrails import agent as guardrails
 from packages.agents.prd_writer import agent as prd_writer
+from packages.agents.research import agent as research
+from packages.agents.research.config import AGENTS as RESEARCH_AGENTS
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUTPUTS_DIR = REPO_ROOT / "data" / "outputs"
@@ -39,12 +46,56 @@ def _timed(fn, *args, **kwargs):
     return result, round(time.monotonic() - started, 2)
 
 
+def _research_one(kind: str, transcript: str, client) -> tuple[str, object, float]:
+    """Run one research agent. A failure is returned, not raised, so the other agents still count."""
+    started = time.monotonic()
+    try:
+        result = research.run_research(kind, transcript, client=client)
+    except ImportError:
+        raise
+    except Exception as e:  # noqa: BLE001 - one failed agent must not stop the run
+        result = e
+    return kind, result, round(time.monotonic() - started, 2)
+
+
+def run_research_step(transcript: str, client, out_dir: Path) -> tuple[list, dict, list[dict]]:
+    """Run all research agents in parallel. Returns (results, failures, metric steps)."""
+    with ThreadPoolExecutor(max_workers=len(RESEARCH_AGENTS)) as pool:
+        outcomes = list(pool.map(lambda k: _research_one(k, transcript, client), RESEARCH_AGENTS))
+
+    research_dir = out_dir / "research"
+    research_dir.mkdir(parents=True, exist_ok=True)
+    results, failed, steps = [], {}, []
+    for kind, result, duration in outcomes:
+        if isinstance(result, Exception):
+            failed[kind] = f"{type(result).__name__}: {result}"
+            steps.append({"agent": f"research:{kind}", "error": failed[kind], "cost_usd": 0.0, "duration_s": duration})
+            continue
+        results.append(result)
+        (research_dir / f"{kind}.json").write_text(json.dumps(result.to_json(), indent=2) + "\n")
+        steps.append({
+            "agent": f"research:{kind}",
+            "model": result.model,
+            "searches": result.searches,
+            "claims_accepted": len(result.accepted),
+            "claims_rejected": len(result.rejected),
+            "grades": {g: sum(c["checks"]["grade"] == g for c in result.accepted) for g in "ABCD"},
+            "usage": result.usage,
+            "cost_usd": result.cost_usd,
+            "duration_s": duration,
+        })
+    brief = research.brief_for_prd(results, failed)
+    (out_dir / "research_brief.md").write_text(brief + "\n")
+    return results, failed, steps
+
+
 def run(
     transcript_path: Path,
     client=None,
     outputs_dir: Path = OUTPUTS_DIR,
     metrics_dir: Path = METRICS_DIR,
     guardrail_review: bool = True,
+    do_research: bool = True,
 ) -> dict:
     transcript = transcript_path.read_text()
     name = transcript_path.stem
@@ -71,10 +122,19 @@ def run(
         "steps": steps,
     }
 
-    # Step 2: PRD Writer (only if guardrails did not block)
     if report.decision != "block":
+        # Step 2: Research
+        brief = ""
+        if do_research:
+            _, failed, research_steps = run_research_step(report.sanitized_transcript, client, out_dir)
+            steps.extend(research_steps)
+            metrics["research_failed"] = failed
+            brief = (out_dir / "research_brief.md").read_text()
+
+        # Step 3: PRD Writer
         result, p_time = _timed(
-            prd_writer.write_prd, report.sanitized_transcript, client=client, notes=report.notes_for_prd
+            prd_writer.write_prd, report.sanitized_transcript, client=client,
+            notes=report.notes_for_prd, research=brief,
         )
         prd_path = out_dir / "PRD.md"
         prd_path.write_text(result.markdown)
@@ -107,6 +167,12 @@ def dry_run(transcript_path: Path) -> None:
         print(f"  - {reason}")
     print(f"Model:          {prd_writer.MODEL} (PRD effort={prd_writer.EFFORT}, guardrails effort={guardrails.EFFORT})")
     print(f"Prompt version: {prd_writer.prompt_version(system_prompt)}")
+    print("Research agents (in parallel):")
+    for kind, cfg in RESEARCH_AGENTS.items():
+        sites = f"{len(cfg['allowed_domains'])} official sites only" if cfg["allowed_domains"] else "open web, graded"
+        print(f"  - {kind}: up to {cfg['max_searches']} searches, {sites}")
+    max_search_cost = sum(c["max_searches"] for c in RESEARCH_AGENTS.values()) * WEB_SEARCH_USD
+    print(f"  Max search cost: ${max_search_cost:.2f} (plus tokens)")
     print(f"System prompt:  {len(system_prompt):,} characters")
     print(f"User message:   {len(user_message):,} characters")
     print("\n--- user message to PRD Writer ---\n" + user_message)
@@ -118,6 +184,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--dry-run", action="store_true", help="show the prompt without calling the API")
     parser.add_argument("--skip-guardrail-review", action="store_true",
                         help="run only the rule-based guardrails (skip the Claude review)")
+    parser.add_argument("--skip-research", action="store_true", help="skip the web research agents")
     args = parser.parse_args(argv)
 
     if args.dry_run:
@@ -125,7 +192,8 @@ def main(argv: list[str]) -> int:
         return 0
 
     try:
-        metrics = run(args.transcript, guardrail_review=not args.skip_guardrail_review)
+        metrics = run(args.transcript, guardrail_review=not args.skip_guardrail_review,
+                      do_research=not args.skip_research)
     except ImportError:
         print("The anthropic package is missing. Run: pip install -r requirements.txt", file=sys.stderr)
         return 1
@@ -140,6 +208,15 @@ def main(argv: list[str]) -> int:
     if metrics["status"] == "blocked":
         print("Run stopped by guardrails. See data/outputs/<name>/guardrails.json")
         return 1
+
+    for step in metrics["steps"]:
+        if step["agent"].startswith("research:"):
+            if "error" in step:
+                print(f"{step['agent']:<17}FAILED - {step['error']}")
+            else:
+                g = step["grades"]
+                print(f"{step['agent']:<17}{step['searches']} searches, {step['claims_accepted']} claims kept "
+                      f"(A:{g['A']} B:{g['B']} C:{g['C']} D:{g['D']}), {step['claims_rejected']} rejected")
 
     check = metrics["structure_check"]
     print(f"PRD written:     {metrics['output']}")
