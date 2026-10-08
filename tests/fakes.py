@@ -59,6 +59,21 @@ DEFAULT_RESEARCH = research_message(
 )
 
 
+def sample_scores(score=4, **overrides):
+    """A valid Scorer answer: every criterion scored `score`, unless overridden by id."""
+    from packages.agents.scorer.agent import GUCCI_KEYS, load_scorecard
+
+    criteria = load_scorecard()["criteria"]
+    return {
+        "gucci": {k: {"finding": f"{k} finding", "evidence": "transcript"} for k in GUCCI_KEYS},
+        "scores": [{"criterion": c["id"], "score": overrides.get(c["id"], score),
+                    "frameworks": [c["frameworks"][0]], "evidence": "transcript quote",
+                    "rationale": "reason"} for c in criteria],
+        "top_strengths": ["Story format"], "top_risks": ["Free competitors"],
+        "unresolved_concerns": ["Who pays?"], "summary": "Promising niche idea.",
+    }
+
+
 class _Stream:
     def __init__(self, message):
         self.message = message
@@ -77,10 +92,14 @@ class FakeClient:
     """`stream` answers the PRD Writer; `create` answers the Guardrails review."""
 
     def __init__(self, prd_text="# PRD: Test\n", stop_reason="end_turn", review=None, review_stop_reason="end_turn",
-                 research=None):
-        """research: dict of agent kind -> list of messages (returned in order) or an Exception to raise."""
+                 research=None, scores=None, fail=None):
+        """research: dict of agent kind -> list of messages (returned in order) or an Exception to raise.
+        scores: Scorer JSON (dict or str). fail: dict of role ("advocate", "skeptic", "scorer") -> Exception."""
         self.stream_calls, self.create_calls, self.research_calls = [], [], []
+        self.debate_calls = []  # (role, kwargs) for advocate / skeptic / scorer
         self._research = research or {}
+        self._scores = scores if isinstance(scores, str) else json.dumps(scores or sample_scores())
+        self._fail = fail or {}
         self._prd = _message(prd_text, stop_reason)
         review_text = review if isinstance(review, str) else json.dumps(review or ALLOW_REVIEW)
         self._review = _message(review_text, review_stop_reason)
@@ -93,6 +112,17 @@ class FakeClient:
     def _create(self, **kwargs):
         if "tools" in kwargs:
             return self._research_reply(kwargs)
+        system = kwargs["system"]
+        for role, marker in (("advocate", "You are the Advocate"), ("skeptic", "You are the Skeptic"),
+                             ("scorer", "You are the Scorer")):
+            if marker in system:
+                self.debate_calls.append((role, kwargs))
+                if role in self._fail:
+                    raise self._fail[role]
+                if role == "scorer":
+                    return _message(self._scores)
+                n = sum(r == role for r, _ in self.debate_calls)
+                return _message(f"{role} turn {n}: points made.")
         self.create_calls.append(kwargs)
         return self._review
 

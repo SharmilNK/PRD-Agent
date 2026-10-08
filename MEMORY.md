@@ -25,23 +25,25 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 | 2026-10-08 | Guardrails: rules first (mask PII/secrets, injection phrases), then Claude review (topic, injection, EU AI Act risk, harm); allow / warn / block (ADR-0003) |
 | 2026-10-08 | User wants ALL phases built first, then will test everything at the end |
 | 2026-10-08 | Research: Market 8 / Standards 6 / Tech 5 searches; Standards uses official-site allow-list; sources graded A-D by rules; invented links rejected; numbers need 2 sites (ADR-0004) |
+| 2026-10-08 | Debate: stateless calls, Skeptic gets only pitch + debate (enforced by code + tests); 2 rounds + closing. Scorer: GUCCI + 10 criteria via JSON schema; code validates and computes verdict (ADR-0005) |
+| 2026-10-08 | Verdict rules clarified: Go = avg >= 3.5 and every criterion >= 3; No-Go = avg < 2.5 or ethics = 1; else Pivot |
 
 ## Current status
 - **Phase 0** (layout, frameworks, scorecard, template, first transcript): done — PR https://github.com/SharmilNK/PRD-Agent/pull/1 (open)
 - **Phase 1** (PRD Writer agent, orchestrator, structure eval, 13 tests, CI): done — PR https://github.com/SharmilNK/PRD-Agent/pull/2 (open, stacked on PR 1)
 - **Phase 2** (Guardrails agent, orchestrator step 1, 35 tests total): done — PR https://github.com/SharmilNK/PRD-Agent/pull/3 (open, stacked on PR 2)
 - **Phase 3** (Research agents + source checks, 61 tests total): done — PR https://github.com/SharmilNK/PRD-Agent/pull/4 (open, stacked on PR 3)
+- **Phase 4** (Debate + Scorer, 82 tests total): done — PR https://github.com/SharmilNK/PRD-Agent/pull/5 (open, stacked on PR 4)
 - First test input: `data/transcripts/storyml-newsletter.md` (ML/AI concepts taught as stories, 3 tracks, 3-tier quizzes)
 
 ## Pending tasks (in order)
-1. Keep building Phases 4-9 (user will test at the end). Then user reviews and merges PRs in order (1, 2, 3, ...). **Important:** new cloud sessions start from `main`, so these memory files only load in new sessions after merge.
+1. Keep building Phases 5-9 (user will test at the end). Then user reviews and merges PRs in order (1, 2, 3, ...). **Important:** new cloud sessions start from `main`, so these memory files only load in new sessions after merge.
 2. First real run on the StoryML transcript (needs `pip install -r requirements.txt` + API key). Not done yet: the cloud environment blocked pypi.org (403).
-3. Phase 4: Advocate (with context) vs. Skeptic (no context) debate + Scorer.
-4. Phase 5: Reviewer agent + quality evals.
-5. Phase 6: GitHub auto-logging (issues, decisions, metrics) + Actions.
-6. Phase 7: Slack / Gmail notifications.
-7. Phase 8: Dashboard (GitHub Pages) + live local reload.
-8. Phase 9: Observability (tracing, cost tracking).
+3. Phase 5: Reviewer agent + quality evals.
+4. Phase 6: GitHub auto-logging (issues, decisions, metrics) + Actions.
+5. Phase 7: Slack / Gmail notifications.
+6. Phase 8: Dashboard (GitHub Pages) + live local reload.
+7. Phase 9: Observability (tracing, cost tracking).
 
 ## Open questions
 - Cloud environment: allow `pypi.org` and `files.pythonhosted.org` so the SDK can be installed and tested in cloud sessions?
@@ -51,6 +53,7 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 - PyPI blocked in the cloud environment → real API runs must happen on the user's computer for now.
 
 ## Session log (newest first)
+- 2026-10-08 — Built Phase 4 (Debate, Scorer). PRD Writer prompt v3 copies scores; common.create_message helper added.
 - 2026-10-08 — Built Phase 3 (Research agents, sources.py checks). PRD Writer prompt v2 cites research and adds a Sources table.
 - 2026-10-08 — Built Phase 2 (Guardrails). Shared helpers moved to packages/agents/common.py; shared FakeClient in tests/fakes.py.
 - 2026-10-08 — Added CLAUDE.md, MEMORY.md, SKILLS.md for memory across sessions.
