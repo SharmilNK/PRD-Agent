@@ -38,7 +38,7 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 - **Phase 6** (run log, GitHub issues, Action): done — PR https://github.com/SharmilNK/PRD-Agent/pull/9 (into `main`)
 - **Phase 7** (Gmail alerts on new/updated PRDs and problems): done — PR https://github.com/SharmilNK/PRD-Agent/pull/10 (into `main`)
 - **Phase 8** (dashboard, live local reload, GitHub Pages): done — PR https://github.com/SharmilNK/PRD-Agent/pull/11 (into `main`)
-- **Phase 9** (tracing, cost budget, operations report + dashboard section, 156 tests): done — branch `claude/optimistic-faraday-rl7bty-phase9`, PR into `main`
+- **Phase 9** (tracing, cost budget, operations report + dashboard section, 156 tests): done — PR https://github.com/SharmilNK/PRD-Agent/pull/12 (into `main`)
 - **All 10 planned phases (0-9) are built.** Next: user tests everything end to end.
 - First test input: `data/transcripts/storyml-newsletter.md` (ML/AI concepts taught as stories, 3 tracks, 3-tier quizzes)
 
@@ -47,7 +47,7 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 - **All Phase 6-9 PRs target `main` directly** (not the previous phase branch), so nothing gets stranded again. Until earlier PRs merge, a later PR also shows the earlier phases' changes. Merge in order: 6 → 7 → 8 → 9.
 
 ## Pending tasks (in order)
-1. User reviews and merges PRs in order: #9 (Phase 6) → #10 (Phase 7) → #11 (Phase 8) → Phase 9 PR. All target `main`. **Important:** new cloud sessions start from `main`, so these memory files only load in new sessions after merge.
+1. User reviews and merges PRs in order: #9 (Phase 6) → #10 (Phase 7) → #11 (Phase 8) → #12 (Phase 9). All target `main`. **Important:** new cloud sessions start from `main`, so these memory files only load in new sessions after merge.
 2. First real test, in this order (on the user's computer, needs `pip install -r requirements.txt` + `ANTHROPIC_API_KEY`):
    a. `python -m unittest discover -s tests -t .` (free)
    b. `python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --dry-run` (free)
