@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "scale": {
+    "1": "Very weak - serious problem, little or no evidence",
+    "2": "Weak - major gaps",
+    "3": "Okay - some evidence, open questions remain",
+    "4": "Strong - good evidence, small gaps",
+    "5": "Very strong - clear evidence from several sources"
+  },
+  "rules": [
+    "Every score must name at least one framework from this file.",
+    "Every score must cite evidence (transcript quote, source link, or marked [ASSUMPTION]).",
+    "Run GUCCI first; its answers feed the criteria listed in feeds_from_gucci."
+  ],
+  "strategy_lens": {
+    "framework": "GUCCI",
+    "file": "gucci.md"
+  },
+  "criteria": [
+    {"id": "customer_need", "name": "Customer need", "frameworks": ["JTBD", "CIRCLES (C-I-R-C)"], "feeds_from_gucci": ["U", "C-segmentation"], "question": "Is the problem real, frequent, and painful?"},
+    {"id": "competitors", "name": "Competitors", "frameworks": ["Porter's Five Forces", "SWOT"], "feeds_from_gucci": ["C-competition"], "question": "Who else solves this, and how are we different?"},
+    {"id": "value", "name": "Value", "frameworks": ["Value Proposition Canvas", "Kano Model"], "feeds_from_gucci": [], "question": "What pains do we remove and gains do we create?"},
+    {"id": "usability", "name": "Usability", "frameworks": ["Cagan Four Risks (usability)", "Google HEART"], "feeds_from_gucci": [], "question": "Can people figure it out and keep coming back?"},
+    {"id": "feasibility", "name": "Feasibility", "frameworks": ["Cagan Four Risks (feasibility)", "RICE (effort)"], "feeds_from_gucci": ["I"], "question": "Can we build it with our skills, data, time and money?"},
+    {"id": "viability", "name": "Viability", "frameworks": ["Cagan Four Risks (business viability)", "Lean Canvas", "TAM/SAM/SOM", "AARRR"], "feeds_from_gucci": ["G", "C-segmentation"], "question": "Can it make money and grow?"},
+    {"id": "ethics", "name": "Ethics / Responsible AI", "frameworks": ["Microsoft Responsible AI Standard", "Google PAIR", "NIST AI RMF", "EU AI Act"], "feeds_from_gucci": [], "question": "Is it fair, safe, honest, and private?"},
+    {"id": "wow", "name": "Wow factor", "frameworks": ["Kano Model (attractive)", "CIRCLES (L-E-S)"], "feeds_from_gucci": [], "question": "Is there a magic moment users will talk about?"},
+    {"id": "ai_fit", "name": "AI-fit", "frameworks": ["Google PAIR (does this need AI?)"], "feeds_from_gucci": [], "question": "Does this truly need AI, or would a simple rule work?"},
+    {"id": "defensibility", "name": "Defensibility", "frameworks": ["7 Powers"], "feeds_from_gucci": ["C-competition", "I"], "question": "What stops a big company from copying this next month?"}
+  ],
+  "verdict": {
+    "go": "Average >= 3.5 and no criterion below 2",
+    "pivot": "Average 2.5-3.5, or any criterion at 2 or below with a fixable cause",
+    "no_go": "Average < 2.5, or ethics scored 1"
+  }
+}
