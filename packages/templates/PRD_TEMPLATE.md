@@ -99,4 +99,5 @@ _Based on: staged rollout practice (alpha / beta / GA) common at Google, Microso
 
 ## 19. Decision Log and Appendix
 _Based on: Architecture Decision Records (Michael Nygard)._
-- Key decisions with date and reason; links to sources; glossary.
+- Key decisions with date and reason; glossary.
+- **Sources** table: title or site, link, grade (A/B/C/D), date, sections that use it.
