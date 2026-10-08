@@ -40,7 +40,9 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 
 ## Where to resume
 - Latest work is on branch `claude/optimistic-faraday-rl7bty-phase5` (each phase branch is stacked on the one before).
-- Until the PRs are merged, `main` does NOT have these files. A new session should check out the phase5 branch first:
+- PRs 1-5 were merged on 2026-10-08, but PRs 2-5 merged into their *parent phase branches*, not `main` (stacked PRs). So `main` only has Phase 0. PR 6 (Phase 5) is still open.
+- Fix (waiting on the user's OK): one PR from `claude/optimistic-faraday-rl7bty-phase5` into `main`. It contains every phase and these memory files.
+- Until that is merged, `main` does NOT have these files. A new session should check out the phase5 branch first:
   `git fetch origin && git checkout claude/optimistic-faraday-rl7bty-phase5`
 - Next step: Phase 6 on a new branch `claude/optimistic-faraday-rl7bty-phase6` stacked on phase5, one PR per phase.
 - Phase 6 idea (proposed, not yet approved in detail): after each run, auto-create GitHub issues for critical/major Reviewer findings, record decisions and metrics in the repo, and a GitHub Action that runs the pipeline when a new transcript is added to `data/transcripts/`.
