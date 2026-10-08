@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PRD-Agent Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Markdown rendering for the PRD viewer. PRDs are AI output, so the HTML is sanitized. -->
+  <script defer src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <main class="viz-root">
+    <header class="top">
+      <div>
+        <h1>PRD-Agent dashboard</h1>
+        <p class="muted" id="updated">Loading…</p>
+      </div>
+      <p class="live" id="live" hidden><span class="dot" aria-hidden="true"></span> Live: updates when files change</p>
+    </header>
+
+    <p class="banner" id="demo-banner" hidden>Sample data: this is a preview. Real runs will replace it.</p>
+    <p class="empty" id="empty" hidden>No runs yet. Run <code>python -m apps.orchestrator.run data/transcripts/&lt;name&gt;.md</code>, then rebuild.</p>
+
+    <div class="filters" role="group" aria-label="Filters">
+      <label for="transcript">Transcript</label>
+      <select id="transcript"></select>
+    </div>
+
+    <section class="kpis" id="kpis" aria-label="Key numbers"></section>
+
+    <section class="grid">
+      <figure class="card">
+        <figcaption><h2>Cost per run</h2><p class="muted">US dollars, oldest to newest</p></figcaption>
+        <div class="chart" id="chart-cost"></div>
+      </figure>
+      <figure class="card">
+        <figcaption><h2>Reviewer quality score per run</h2><p class="muted">Rubric average, 1–5. Dashed line = pass (3.5)</p></figcaption>
+        <div class="chart" id="chart-rubric"></div>
+      </figure>
+      <figure class="card">
+        <figcaption><h2>Product scorecard</h2><p class="muted" id="scorecard-sub">Latest run, 1–5. Dashed line = 3 (Go needs every score ≥ 3)</p></figcaption>
+        <div class="chart" id="chart-scorecard"></div>
+      </figure>
+      <figure class="card">
+        <figcaption><h2>Source quality</h2><p class="muted">Checked research claims in the latest run, by grade</p></figcaption>
+        <div class="chart" id="chart-grades"></div>
+      </figure>
+    </section>
+
+    <section class="card" aria-labelledby="findings-h">
+      <h2 id="findings-h">Open problems (latest run)</h2>
+      <ul class="findings" id="findings"></ul>
+    </section>
+
+    <section class="card" aria-labelledby="runs-h">
+      <h2 id="runs-h">All runs</h2>
+      <div class="table-wrap"><table id="runs"></table></div>
+    </section>
+
+    <section class="card" aria-labelledby="prd-h">
+      <h2 id="prd-h">PRD</h2>
+      <p class="muted" id="prd-sub"></p>
+      <article class="prd" id="prd"></article>
+    </section>
+  </main>
+  <div class="tooltip" id="tooltip" role="status" hidden></div>
+</body>
+</html>
