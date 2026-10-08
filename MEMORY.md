@@ -38,6 +38,13 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 - **Phase 5** (Reviewer, quality checks, revision, eval harness, 104 tests total): done — PR https://github.com/SharmilNK/PRD-Agent/pull/6 (open, stacked on PR 5)
 - First test input: `data/transcripts/storyml-newsletter.md` (ML/AI concepts taught as stories, 3 tracks, 3-tier quizzes)
 
+## Where to resume
+- Latest work is on branch `claude/optimistic-faraday-rl7bty-phase5` (each phase branch is stacked on the one before).
+- Until the PRs are merged, `main` does NOT have these files. A new session should check out the phase5 branch first:
+  `git fetch origin && git checkout claude/optimistic-faraday-rl7bty-phase5`
+- Next step: Phase 6 on a new branch `claude/optimistic-faraday-rl7bty-phase6` stacked on phase5, one PR per phase.
+- Phase 6 idea (proposed, not yet approved in detail): after each run, auto-create GitHub issues for critical/major Reviewer findings, record decisions and metrics in the repo, and a GitHub Action that runs the pipeline when a new transcript is added to `data/transcripts/`.
+
 ## Pending tasks (in order)
 1. Keep building Phases 6-9 (user will test at the end). Then user reviews and merges PRs in order (1, 2, 3, ...). **Important:** new cloud sessions start from `main`, so these memory files only load in new sessions after merge.
 2. First real run: `python -m evals.run_evals --cheap`, then full run on the StoryML transcript (needs `pip install -r requirements.txt` + API key). Not done yet: the cloud environment blocked pypi.org (403).
@@ -48,12 +55,13 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 
 ## Open questions
 - Cloud environment: allow `pypi.org` and `files.pythonhosted.org` so the SDK can be installed and tested in cloud sessions?
-- Should Claude watch PRs 1 and 2 and auto-fix CI / review comments? (asked, no answer yet)
+- Should Claude watch the open PRs (1-6) and auto-fix CI / review comments? (asked, no answer yet)
 
 ## Known issues
 - PyPI blocked in the cloud environment → real API runs must happen on the user's computer for now.
 
 ## Session log (newest first)
+- 2026-10-08 — Session ended by user after Phase 5. All work committed and pushed. Resume with Phase 6.
 - 2026-10-08 — Built Phase 5 (Reviewer, evals). common.run_tool_turn shared by research + link check.
 - 2026-10-08 — Built Phase 4 (Debate, Scorer). PRD Writer prompt v3 copies scores; common.create_message helper added.
 - 2026-10-08 — Built Phase 3 (Research agents, sources.py checks). PRD Writer prompt v2 cites research and adds a Sources table.
