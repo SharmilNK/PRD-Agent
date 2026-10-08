@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 from apps.orchestrator import run as orchestrator
-from apps.orchestrator.publish import publish
+from apps.orchestrator.publish import publish, read_prd
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TRANSCRIPTS = REPO_ROOT / "data" / "transcripts"
@@ -53,13 +53,15 @@ def main() -> int:
     failed = 0
     for path in paths:
         print(f"=== {path}")
+        old_prd = read_prd(orchestrator.OUTPUTS_DIR, REPO_ROOT / path)
         try:
             metrics = orchestrator.run(REPO_ROOT / path)
         except Exception as e:  # noqa: BLE001 - keep going with the other transcripts
             print(f"Run failed: {type(e).__name__}: {e}", file=sys.stderr)
             failed += 1
             continue
-        info = publish(metrics, orchestrator.OUTPUTS_DIR, orchestrator.METRICS_DIR, github=True)
+        info = publish(metrics, orchestrator.OUTPUTS_DIR, orchestrator.METRICS_DIR, github=True,
+                       alert=True, old_prd=old_prd)
         print(f"status={metrics['status']} gate={metrics.get('quality_gate')} "
               f"cost=${metrics['total_cost_usd']:.2f} issues={info.get('issue_numbers')}")
     return 1 if failed else 0
