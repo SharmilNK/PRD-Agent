@@ -57,7 +57,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/outputs data/metrics data/decisions data/traces
+          # Add only folders that exist: a run that fails early may not create all of them.
+          for dir in data/outputs data/metrics data/decisions data/traces; do
+            if [ -e "$dir" ]; then git add "$dir"; fi
+          done
           if git diff --cached --quiet; then
             echo "Nothing to commit."
           else

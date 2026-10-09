@@ -63,9 +63,11 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 - Cloud environment: allow `pypi.org` and `files.pythonhosted.org` so the SDK can be installed and tested in cloud sessions?
 
 ## Known issues
+- First Action run (2026-10-09) failed: Anthropic API credit balance too low (user must add API credits). Also exposed a bug: commit step failed when `data/traces` didn't exist; fixed on branch `claude/optimistic-faraday-rl7bty`.
 - PyPI blocked in the cloud environment → real API runs must happen on the user's computer for now.
 
 ## Session log (newest first)
+- 2026-10-09 — First real Action run: credit error (billing) + commit-step bug (fixed: add only existing folders, data/traces/.gitkeep, flushed CI logs).
 - 2026-10-08 — Built Phase 9 (observability). All phases 0-9 built; PRs #9-#11 + Phase 9 PR open into main.
 - 2026-10-08 — Built Phase 8 (dashboard). Screenshot-checked light/dark/mobile; live reload verified in a real browser.
 - 2026-10-08 — Built Phase 7 (Gmail alerts).

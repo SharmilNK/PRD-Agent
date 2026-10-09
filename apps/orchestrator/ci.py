@@ -52,12 +52,12 @@ def main() -> int:
         return 0
     failed = 0
     for path in paths:
-        print(f"=== {path}")
+        print(f"=== {path}", flush=True)
         old_prd = read_prd(orchestrator.OUTPUTS_DIR, REPO_ROOT / path)
         try:
             metrics = orchestrator.run(REPO_ROOT / path)
         except Exception as e:  # noqa: BLE001 - keep going with the other transcripts
-            print(f"Run failed: {type(e).__name__}: {e}", file=sys.stderr)
+            print(f"Run failed: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
             failed += 1
             continue
         info = publish(metrics, orchestrator.OUTPUTS_DIR, orchestrator.METRICS_DIR, github=True,
