@@ -26,6 +26,7 @@ Usage:
     python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --skip-debate
     python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --skip-review --no-revise
     python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --github-issues
+    python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --alert
 
 After every run, the run is added to data/metrics/index.json and data/decisions/RUN_LOG.md.
 """
@@ -40,7 +41,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
-from apps.orchestrator.publish import publish
+from apps.orchestrator.publish import publish, read_prd
 from evals.quality_checks import run_checks
 from packages.agents.common import WEB_SEARCH_USD
 from packages.agents.debate import agent as debate
@@ -332,12 +333,15 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--no-revise", action="store_true", help="never run the revision pass")
     parser.add_argument("--github-issues", action="store_true",
                         help="create/update GitHub issues (needs GITHUB_TOKEN and GITHUB_REPOSITORY)")
+    parser.add_argument("--alert", action="store_true",
+                        help="email a Gmail alert if the PRD is new/updated or the run had problems")
     args = parser.parse_args(argv)
 
     if args.dry_run:
         dry_run(args.transcript)
         return 0
 
+    old_prd = read_prd(OUTPUTS_DIR, args.transcript)
     try:
         metrics = run(args.transcript, guardrail_review=not args.skip_guardrail_review,
                       do_research=not args.skip_research, do_debate=not args.skip_debate,
@@ -349,13 +353,17 @@ def main(argv: list[str]) -> int:
         print(f"Run failed: {e}", file=sys.stderr)
         return 1
 
-    gh = publish(metrics, OUTPUTS_DIR, METRICS_DIR, github=args.github_issues)
+    gh = publish(metrics, OUTPUTS_DIR, METRICS_DIR, github=args.github_issues, alert=args.alert, old_prd=old_prd)
 
     g = metrics["guardrails"]
     print(f"Guardrails:      {g['decision'].upper()}")
     for reason in g["reasons"]:
         print(f"  - {reason}")
     _print_github(gh)
+    if "alert" in metrics:
+        a = metrics["alert"]
+        print(f"Gmail alert:     {'sent' if a['sent'] else 'not sent'}"
+              + (f" ({', '.join(a['events'])})" if a["events"] else "") + (f" - {a['reason']}" if not a["sent"] else ""))
     if metrics["status"] == "blocked":
         print("Run stopped by guardrails. See data/outputs/<name>/guardrails.json")
         return 1

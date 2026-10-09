@@ -28,11 +28,13 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 | 2026-10-08 | Debate: stateless calls, Skeptic gets only pitch + debate (enforced by code + tests); 2 rounds + closing. Scorer: GUCCI + 10 criteria via JSON schema; code validates and computes verdict (ADR-0005) |
 | 2026-10-08 | Reviewer: free checks (structure, links only from research, scores match) + web-fetch spot-check of up to 5 links + rubric review; one revision max; quality gate = checks pass and rubric >= 3.5; eval harness with 4 cases, not in CI (ADR-0006) |
 | 2026-10-08 | GitHub logging: run log (index.json + RUN_LOG.md) always on; issues via stdlib urllib with fingerprints (no duplicates, auto-close only checked kinds); Action on push to data/transcripts on main + manual; publish kept separate from pipeline (ADR-0007) |
+| 2026-10-08 | Gmail alerts via SMTP + app password (stdlib); events new/updated/blocked/quality_fail/error; section-level diff vs PRD before the run; HTML escaped; no secrets/addresses in metrics; alert.eml git-ignored (ADR-0008) |
 | 2026-10-08 | Verdict rules clarified: Go = avg >= 3.5 and every criterion >= 3; No-Go = avg < 2.5 or ethics = 1; else Pivot |
 
 ## Current status
 - **Phases 0-5 are merged to `main`** (PRs 1-6, plus PR 8). 104 tests at that point.
-- **Phase 6** (run log, GitHub issues, Action): done — branch `claude/optimistic-faraday-rl7bty-phase6`, PR into `main`
+- **Phase 6** (run log, GitHub issues, Action): done — PR https://github.com/SharmilNK/PRD-Agent/pull/9 (into `main`)
+- **Phase 7** (Gmail alerts on new/updated PRDs and problems): done — branch `claude/optimistic-faraday-rl7bty-phase7`, PR into `main`
 - First test input: `data/transcripts/storyml-newsletter.md` (ML/AI concepts taught as stories, 3 tracks, 3-tier quizzes)
 
 ## Where to resume
@@ -40,19 +42,20 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 - **All Phase 6-9 PRs target `main` directly** (not the previous phase branch), so nothing gets stranded again. Until earlier PRs merge, a later PR also shows the earlier phases' changes. Merge in order: 6 → 7 → 8 → 9.
 
 ## Pending tasks (in order)
-1. Keep building Phases 7-9 (user will test at the end). Then user reviews and merges PRs in order (6 → 7 → 8 → 9). **Important:** new cloud sessions start from `main`, so these memory files only load in new sessions after merge.
+1. Keep building Phases 8-9 (user will test at the end). Then user reviews and merges PRs in order (6 → 7 → 8 → 9). **Important:** new cloud sessions start from `main`, so these memory files only load in new sessions after merge.
 2. First real run: `python -m evals.run_evals --cheap`, then full run on the StoryML transcript (needs `pip install -r requirements.txt` + API key). Not done yet: the cloud environment blocked pypi.org (403).
-3. Phase 7: Gmail alerts on PRD updates (user chose Gmail).
-4. Phase 8: Dashboard (GitHub Pages) + live local reload.
-5. Phase 9: Observability (tracing, cost tracking).
+3. Phase 8: Dashboard (GitHub Pages) + live local reload.
+4. Phase 9: Observability (tracing, cost tracking).
 
 ## Open questions
+- Gmail alerts need a Gmail app password set as `GMAIL_ADDRESS` / `GMAIL_APP_PASSWORD` / `ALERT_TO` (local env or repo secrets). Not set up yet.
 - Cloud environment: allow `pypi.org` and `files.pythonhosted.org` so the SDK can be installed and tested in cloud sessions?
 
 ## Known issues
 - PyPI blocked in the cloud environment → real API runs must happen on the user's computer for now.
 
 ## Session log (newest first)
+- 2026-10-08 — Built Phase 7 (Gmail alerts).
 - 2026-10-08 — New session: found Phases 0-5 merged to main. Built Phase 6 (run log, GitHub issues, Action).
 - 2026-10-08 — Session ended by user after Phase 5. All work committed and pushed. Resume with Phase 6.
 - 2026-10-08 — Built Phase 5 (Reviewer, evals). common.run_tool_turn shared by research + link check.
