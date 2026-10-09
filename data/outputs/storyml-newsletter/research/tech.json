@@ -1,0 +1,225 @@
+{
+  "kind": "tech",
+  "summary": "I ran out of searches early: only 3 of the planned 10+ went through before the search tool hit its limit. Because of that, the evidence covers only `platforms` and part of `payments`. For those two topics it's fairly strong: Substack's own help page confirms it's free to publish and takes 10% of paid revenue plus Stripe fees. Several sources agree beehiiv is free up to 2,500 subscribers, but they disagree on its paid plan names and prices. Ghost's own pricing page says it charges no payment fees, though the captured copy may be out of date. I found nothing at all for `build_stack`, `ai_components`, `quality_and_safety` or `observability`, so those are listed as open questions. Based on what I did find, the simplest first version is a hosted newsletter platform (Substack, beehiiv free tier or Ghost) with no custom code. A custom build should wait until the interactive three-tier quiz needs something these platforms can't do, which I haven't confirmed yet.",
+  "accepted": [
+    {
+      "claim": "A second, independent source agrees on Substack's 10% fee on paid revenue plus Stripe fees.",
+      "url": "https://schoolmaker.com/blog/substack-pricing",
+      "quote": "10% of all paid subscriber revenue + Stripe fees",
+      "published": "2026",
+      "topic": "payments",
+      "source_type": "blog",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "2026-01-01",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "A creator's blog puts Stripe processing at about 2.9% + 30\u00a2 per charge, so a Substack writer keeps about 87% of each paid subscription. Stripe's own pricing page is not confirmed.",
+      "url": "https://www.amysuto.com/desk-of-amy-suto/substack-pricing",
+      "quote": "What you keep:** roughly 87% of every paid subscription",
+      "published": "unknown",
+      "topic": "payments",
+      "source_type": "blog",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "beehiiv has a free plan for up to 2,500 subscribers with unlimited email sends.",
+      "url": "https://www.emailtooltester.com/en/reviews/beehiiv/pricing/",
+      "quote": "a limited free plan, **Free**, for up to 2,500 subscribers and unlimited email sends",
+      "published": "unknown",
+      "topic": "platforms",
+      "source_type": "blog",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "A second source also says beehiiv's free tier (called 'Launch' there) covers up to 2,500 subscribers.",
+      "url": "https://redefiningretirement.io/p/beehiiv-review-2025-pricing-and-promo",
+      "quote": "Launch is free up to 2,500 subscribers.",
+      "published": "2026",
+      "topic": "platforms",
+      "source_type": "blog",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "2026-01-01",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "One review says beehiiv's paid plans start at $59/month (Lite) and that this plan adds monetization, A/B testing and automations. A Pro plan starts at $109/month.",
+      "url": "https://www.emailtooltester.com/en/reviews/beehiiv/pricing/",
+      "quote": "Paid plans start at $59/month for the **Lite** plan, which adds monetization features, A/B testing, automations",
+      "published": "unknown",
+      "topic": "payments",
+      "source_type": "blog",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "Conflicting source: other reviews list beehiiv's paid plans as Scale ($49/month) and Max ($109/month). Plan names and prices may have changed recently; check beehiiv's own pricing page.",
+      "url": "https://costbench.com/software/email-marketing/beehiiv/",
+      "quote": "Beehiiv pricing: Launch (free), Scale $49/mo, Max $109/mo, Enterprise (custom).",
+      "published": "unknown",
+      "topic": "payments",
+      "source_type": "blog",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "Ghost(Pro) says on its own pricing page that it takes no payment fees, unlike Substack's 10% cut.",
+      "url": "https://ghost.org/pricing/",
+      "quote": "No payment fees \u2014 upgrade, downgrade, or cancel anytime.",
+      "published": "unknown",
+      "topic": "payments",
+      "source_type": "company_own_page",
+      "checks": {
+        "grade": "B",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "Ghost(Pro)'s entry plan, Starter, is listed at $18/month billed yearly for solo blogs and newsletters. The captured copy may be old, so the price needs re-checking.",
+      "url": "https://ghost.org/pricing/",
+      "quote": "Starter For solo blogs & newsletters  $  18  USD / mo  Billed yearly",
+      "published": "unknown",
+      "topic": "platforms",
+      "source_type": "company_own_page",
+      "checks": {
+        "grade": "B",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "Ghost's software is open source and can be self-hosted. Ghost Pro managed hosting is billed separately, which is a possible path to more control later.",
+      "url": "https://dev.to/nayankyada/ghost-pricing-2026-free-self-hosted-costs-pro-plans-when-to-upgrade-52a2",
+      "quote": "the software is open-source but the managed hosting \u2014 Ghost Pro \u2014 runs on a separate billing model",
+      "published": "2026",
+      "topic": "platforms",
+      "source_type": "blog",
+      "checks": {
+        "grade": "C",
+        "link_found": true,
+        "quote_found": false,
+        "published": "2026-01-01",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    }
+  ],
+  "rejected": [
+    {
+      "claim": "Substack is free to publish on at any audience size, so a first version could launch on it for $0.",
+      "url": "https://support.substack.com/hc/en-us/articles/360037607131-How-much-does-Substack-cost",
+      "quote": "Publishing on Substack is free, no matter how many subscribers you have.",
+      "published": "unknown",
+      "topic": "platforms",
+      "source_type": "company_own_page",
+      "checks": {
+        "grade": "C",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true
+      },
+      "rejected_because": "community source used for a number"
+    },
+    {
+      "claim": "If paid subscriptions are turned on, Substack keeps 10% of subscription revenue, and Stripe charges its own fees on top.",
+      "url": "https://support.substack.com/hc/en-us/articles/360037607131-How-much-does-Substack-cost",
+      "quote": "Substack keeps 10% of subscription revenue, and Stripe charges its own payment processing fees.",
+      "published": "unknown",
+      "topic": "payments",
+      "source_type": "company_own_page",
+      "checks": {
+        "grade": "C",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true
+      },
+      "rejected_because": "community source used for a number"
+    }
+  ],
+  "open_questions": [
+    "Search budget ran out after 3 queries, so the topics below were never researched.",
+    "platforms: Can Substack, beehiiv or Ghost host an interactive three-tier quiz (Basic/Intermediate/Expert) natively, or does it need an embed (e.g., Typeform/Tally) or custom code? Not researched.",
+    "platforms: Kit (ConvertKit) pricing and features were not checked.",
+    "platforms: Ghost's current prices need confirming on a fresh view of ghost.org/pricing, since the captured copy may be outdated.",
+    "payments: Stripe's own pricing page was not checked. The 2.9% + 30\u00a2 figure comes from a blog only. Apple in-app fees on Substack were mentioned but not quantified.",
+    "payments: beehiiv's official plan names and prices conflict between sources (Lite $59/Pro $109 vs Scale $49/Max $109). Check beehiiv.com/pricing directly.",
+    "build_stack: No evidence gathered on frontend, hosting, database, auth or storage options for a custom version (e.g., Next.js + Vercel + Supabase).",
+    "ai_components: No evidence gathered on LLM API prices (OpenAI, Anthropic, Google) or the cost per story draft or per quiz set.",
+    "quality_and_safety: No evidence gathered on evaluation tools (e.g., promptfoo, RAGAS, LLM-as-judge) or human review workflows for checking the technical accuracy of AI-drafted stories and quizzes.",
+    "observability: No evidence gathered on newsletter analytics (open/click rates on each platform), web analytics (e.g., Plausible, PostHog) or LLM tracing tools (e.g., Langfuse).",
+    "No evidence gathered on whether existing ML newsletters already use storytelling formats (competitor check is outside this focus but worth doing)."
+  ],
+  "searches": 5,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 79360,
+    "output_tokens": 4892,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  },
+  "cost_usd": 0.46528
+}

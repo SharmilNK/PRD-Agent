@@ -1,0 +1,40 @@
+{
+  "structure": {
+    "passed": true,
+    "sections_expected": 19,
+    "sections_found": 19,
+    "missing_sections": [],
+    "scorecard_frameworks_named": [
+      "GUCCI",
+      "CIRCLES",
+      "JTBD",
+      "Kano",
+      "HEART",
+      "RICE",
+      "Porter",
+      "Cagan",
+      "7 Powers",
+      "PAIR"
+    ],
+    "markers": {
+      "[ASSUMPTION]": 39,
+      "[NEEDS RESEARCH]": 33,
+      "[OPEN QUESTION]": 27
+    }
+  },
+  "links": {
+    "links": 28,
+    "unknown_links": [],
+    "passed": true
+  },
+  "scores": {
+    "checked": true,
+    "passed": true,
+    "mismatches": []
+  },
+  "readability": {
+    "avg_sentence_words": 15.8,
+    "passed": true
+  },
+  "passed": true
+}

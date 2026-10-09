@@ -1,0 +1,300 @@
+{
+  "kind": "standards",
+  "summary": "The best-supported finding is the EU AI Act's Article 50 transparency rule. From 2 August 2026, AI-generated text published on matters of public interest must be labeled unless a human has reviewed it or has editorial control. For creative or fictional works, the duty shrinks to an appropriate disclosure. That fits StoryML's dramatized format, but it only helps if the team keeps real human editorial review. For the email newsletter, the FTC's official guidance gives concrete US rules if emails promote commercial content: a working opt-out honored within 10 business days, a valid postal address, honest headers and subject lines, and penalties of up to $53,088 per violating email. EU/UK sources say marketing emails generally need consent, and the consent can't be bundled into the terms. Evidence for these areas comes from official sources and is strong. I ran out of searches before covering CCPA thresholds (from an official source), OWASP, NIST, WCAG 2.2, AI copyright or FTC endorsement rules, so those are open questions. The search tool showed page age only as relative days, so I couldn't confirm most publication dates.",
+  "accepted": [
+    {
+      "claim": "The EU AI Act's Article 50 requires deepfakes and AI-generated text to be disclosed as artificially generated, with specific exceptions.",
+      "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+      "quote": "Deepfakes and AI-generated text must be disclosed as artificially generated.",
+      "published": "unknown",
+      "topic": "ai_regulation",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "Deployers only have to label AI-generated text when it's published on matters of public interest without human review or editorial control. A human-edited newsletter with clear editorial responsibility may fall outside this duty.",
+      "url": "https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act",
+      "quote": "AI-generated or manipulated text published on matters of public interest without human review or editorial control",
+      "published": "unknown",
+      "topic": "ai_regulation",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "For evidently artistic, creative or fictional works, Article 50 marking/disclosure duties are reduced to disclosure that doesn't spoil the work. This matters for StoryML's dramatized stories if they use AI-generated media.",
+      "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+      "quote": "Where the content forms part of an evidently artistic, creative, satirical, fictional or analogous work",
+      "published": "unknown",
+      "topic": "ai_regulation",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "The Article 50 transparency obligations apply from 2 August 2026.",
+      "url": "https://digital-strategy.ec.europa.eu/en/policies/code-practice-ai-generated-content",
+      "quote": "These transparency obligations, applicable from 2 August 2026",
+      "published": "unknown",
+      "topic": "ai_regulation",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "The EU Code of Practice on AI-generated content is voluntary, but the Article 50 requirements behind it are legally binding. The EU has also published icons that deployers can use to label AI content.",
+      "url": "https://digital-strategy.ec.europa.eu/en/policies/code-practice-ai-generated-content",
+      "quote": "the transparency requirements under article 50 of the AI Act are legal obligations",
+      "published": "unknown",
+      "topic": "ai_regulation",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "If StoryML adds an interactive AI feature (for example an AI quiz tutor or chatbot), users must be told they're talking to an AI unless that's obvious.",
+      "url": "https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act",
+      "quote": "the individuals concerned are informed that they are interacting with an AI system, unless this is obvious",
+      "published": "unknown",
+      "topic": "ai_regulation",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "CAN-SPAM covers any commercial email, including email that promotes content on commercial websites, and isn't limited to bulk email. A newsletter that promotes paid tiers or sponsors would likely be covered.",
+      "url": "https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business",
+      "quote": "including email that promotes content on commercial websites",
+      "published": "unknown",
+      "topic": "privacy",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "Each email that violates CAN-SPAM can bring a penalty of up to $53,088. This figure is adjusted for inflation over time, so check the current amount.",
+      "url": "https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business",
+      "quote": "Each separate email in violation of the CAN-SPAM Act is subject to penalties of up to $53,088",
+      "published": "unknown",
+      "topic": "privacy",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "Under CAN-SPAM, opt-out requests must be honored within 10 business days, and the opt-out mechanism must keep working for at least 30 days after sending.",
+      "url": "https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business",
+      "quote": "You must honor a recipient\u2019s opt-out request within 10 business days.",
+      "published": "unknown",
+      "topic": "privacy",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "Commercial emails must include the sender's valid physical postal address.",
+      "url": "https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business",
+      "quote": "Your message must include your valid physical postal address.",
+      "published": "unknown",
+      "topic": "privacy",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "Being a subscriber doesn't remove the right to opt out of marketing emails. Unless an email is purely transactional or relationship-based, it needs an opt-out.",
+      "url": "https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business",
+      "quote": "subscribers and members don\u2019t lose their ability to opt out of marketing emails from you",
+      "published": "unknown",
+      "topic": "privacy",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "US CAN-SPAM doesn't require opt-in consent before sending commercial email, unlike EU/UK rules.",
+      "url": "https://www.ftc.gov/business-guidance/blog/2015/08/candid-answers-can-spam-questions",
+      "quote": "there is no opt-in requirement",
+      "published": "2015-08",
+      "topic": "privacy",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "2015-08-01",
+        "stale": true,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "In the UK, many marketing messages need consent under e-privacy law (PECR). Where they do, consent is also the right lawful basis under UK GDPR.",
+      "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/consent/when-is-consent-appropriate/",
+      "quote": "You are also likely to need consent under e-privacy laws for many types of marketing calls and marketing messages",
+      "published": "unknown",
+      "topic": "privacy",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "Under GDPR, consent bundled into non-negotiable terms and conditions is presumed not freely given. Newsletter signup consent should be a separate, specific choice.",
+      "url": "https://edpb.europa.eu/sites/default/files/consultation/edpb_guidelines_202008_onthetargetingofsocialmediausers_en.pdf",
+      "quote": "If consent is bundled up as a non-negotiable part of terms and conditions",
+      "published": "2020",
+      "topic": "privacy",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "2020-01-01",
+        "stale": true,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "Before using a bought or third-party contact list, a business must be able to show the data was collected in compliance with GDPR and may be used for marketing. Email marketing must also follow the ePrivacy Directive.",
+      "url": "https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/legal-grounds-processing-data/can-data-received-third-party-be-used-marketing_en",
+      "quote": "demonstrate that the data was obtained in compliance with the General Data Protection Regulation",
+      "published": "unknown",
+      "topic": "privacy",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "In the UK, cookies and similar tracking (for example blog or email analytics) need user consent under PECR.",
+      "url": "https://ico.org.uk/media2/kz0doybw/guidance-on-the-use-of-cookies-and-similar-technologies-1-0.pdf",
+      "quote": "PECR requires that users or subscribers consent to cookies being placed or used on their device.",
+      "published": "unknown",
+      "topic": "privacy",
+      "source_type": "official",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    }
+  ],
+  "rejected": [],
+  "open_questions": [
+    "CCPA/CPRA thresholds: I only found Microsoft compliance pages (which show the older 50,000-consumer threshold) and an OWASP chapter slide deck (100,000 under CPRA), not an official California AG or CPPA source. The current revenue and consumer thresholds need confirming from oag.ca.gov or cppa.ca.gov. A small newsletter may fall below them.",
+    "Whether quiz results count as personal data needing their own GDPR lawful basis, retention limits, or profiling notices. Not researched.",
+    "Security: OWASP Top 10 for Web Applications and OWASP Top 10 for LLM Applications (prompt injection etc.) weren't researched because I ran out of searches. These matter if quizzes or AI features take user input.",
+    "Responsible AI: NIST AI RMF 1.0 and the NIST AI 600-1 Generative AI Profile (for example confabulation and information integrity risks if AI helps draft technical content), the Microsoft Responsible AI Standard and Google PAIR guidance weren't researched.",
+    "Accessibility: WCAG 2.2 success criteria for the blog, newsletter HTML and interactive quizzes (keyboard access, focus visibility, target size, accessible authentication) weren't researched.",
+    "Content and IP: US Copyright Office guidance on whether AI-assisted stories can be copyrighted (human authorship requirement) wasn't researched.",
+    "Consumer protection: FTC Endorsement Guides (16 CFR Part 255) for sponsored content or affiliate links in the newsletter, and FTC enforcement against deceptive AI claims, weren't researched.",
+    "Whether StoryML counts as publishing on 'matters of public interest' under Article 50(4). Educational ML content may not qualify, and the Commission's Guidelines on Transparency of AI-Generated Content should be read directly.",
+    "Exact publication dates for most of the official pages above couldn't be confirmed from the search results."
+  ],
+  "searches": 6,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 205014,
+    "output_tokens": 7604,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  },
+  "cost_usd": 1.032136
+}

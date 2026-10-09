@@ -1,0 +1,254 @@
+{
+  "kind": "market",
+  "summary": "AI newsletters can reach very large audiences, but the biggest ones are free daily news digests paid for by ads, such as The Rundown AI and TLDR AI. They don't teach one concept in depth through stories, which leaves room for StoryML. All subscriber counts for these competitors come from third-party roundup blogs. None is confirmed by the newsletters themselves, and the numbers for The Rundown AI differ widely depending on the date. The case for the storytelling format is backed by a solid 2021 meta-analysis (33,000+ participants), and Substack's own figures show a large paid-subscription market and a strong built-in channel for growth. There is at least one earlier project teaching ML through stories (Sairam Sundaresan), so the idea isn't entirely new. Evidence is weak on user pain points, how willing readers are to pay for this format, and how big the audience is for evaluation and MLOps content. I reached the search limit before I could look these up.",
+  "accepted": [
+    {
+      "claim": "The Rundown AI is a free daily AI news newsletter supported by ads, reported at 2M+ subscribers.",
+      "url": "https://www.readless.app/blog/is-the-rundown-ai-newsletter-free-2026",
+      "quote": "Yes \u2014 The Rundown AI's daily newsletter is free, ad-supported, with 2M+ subscribers.",
+      "published": "unknown",
+      "topic": "competitors",
+      "source_type": "blog",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "An older roundup put The Rundown AI at only 650,000+ subscribers, far below the 2M+ in recent roundups. Either it grew fast or the numbers aren't reliable. Neither figure is official.",
+      "url": "https://www.pillar.security/blog/10-best-ai-newsletters-you-must-subscribe-to",
+      "quote": "Subscribers: 650,000+",
+      "published": "unknown",
+      "topic": "market_size",
+      "source_type": "blog",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "TLDR AI is a technical daily that uses a short headline-plus-summary format. It is reported at over 1.15 million readers. Two independent roundups give similar figures: DataCamp says 'well over a million' and Readless says 1.1M+.",
+      "url": "https://datanorth.ai/blog/top-10-ai-newsletters-to-follow-in-2026",
+      "quote": "TLDR AI, part of the broader TLDR media network, reaches over 1.15 million readers",
+      "published": "unknown",
+      "topic": "competitors",
+      "source_type": "blog",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "The leading technical AI daily is built for quick sorting of news, not for teaching concepts in depth. That is a gap a story-driven explainer could fill.",
+      "url": "https://www.datacamp.com/blog/best-ai-newsletters",
+      "quote": "The format is ruthless \u2014 headline, two-sentence summary, link",
+      "published": "unknown",
+      "topic": "competitors",
+      "source_type": "blog",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "The Rundown AI's daily newsletter is free. The money comes from a separate paid training product, Rundown University, priced at $84/month on an annual plan.",
+      "url": "https://www.readless.app/blog/is-the-rundown-ai-newsletter-free-2026",
+      "quote": "The only paid product is Rundown University ($84/mo annual).",
+      "published": "unknown",
+      "topic": "pricing",
+      "source_type": "blog",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "Sebastian Raschka's Ahead of AI, a newsletter that explains AI research in depth, reached 200,000 subscribers, and some readers pay.",
+      "url": "https://sebastianraschka.com/blog/2026/ahead-of-ai-reached-200000-subscribers.html",
+      "quote": "Just saw that my blog reached 200,000 subscribers.",
+      "published": "2026-07-12",
+      "topic": "competitors",
+      "source_type": "company_own_page",
+      "checks": {
+        "grade": "B",
+        "link_found": true,
+        "quote_found": false,
+        "published": "2026-07-12",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "A third-party guide lists Ahead of AI's paid tier on Substack at $6/month, which suggests a low price point for technical AI newsletters.",
+      "url": "https://pasqualepillitteri.it/en/news/276/best-ai-newsletters-substack-pricing-guide",
+      "quote": "Newsletter: Ahead of AI. Author: Sebastian Raschka. Price: $6/mo.",
+      "published": "unknown",
+      "topic": "pricing",
+      "source_type": "blog",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "Teaching ML through stories has been done before. Sairam Sundaresan wrote about using stories to make ML concepts memorable, and there is a book that teaches ML through stories.",
+      "url": "https://medium.com/mlearning-ai/learning-machine-learning-through-stories-43de0a6524c6",
+      "quote": "You can make ANY machine learning concept memorable by crafting a story for it.",
+      "published": "unknown",
+      "topic": "competitors",
+      "source_type": "blog",
+      "checks": {
+        "grade": "C",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "A meta-analysis of 75+ samples and 33,000+ participants found that stories are understood and remembered better than expository essays. This directly supports the core idea of StoryML.",
+      "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8219577/",
+      "quote": "we found that stories were more easily understood and better recalled than essays.",
+      "published": "2021",
+      "topic": "trends",
+      "source_type": "research_firm",
+      "checks": {
+        "grade": "A",
+        "link_found": true,
+        "quote_found": false,
+        "published": "2021-01-01",
+        "stale": true,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "Substack passed 5 million paid subscriptions across more than 50,000 publications that earn money (March 2025). Wikipedia separately reports 4 million in November 2024.",
+      "url": "https://www.tubefilter.com/2025/03/12/substack-five-million-paid-subscribers-journalist-reporter-newsletter/",
+      "quote": "Substack now has more than five million paid subscribers",
+      "published": "2025-03-12",
+      "topic": "market_size",
+      "source_type": "news",
+      "checks": {
+        "grade": "D",
+        "link_found": true,
+        "quote_found": false,
+        "published": "2025-03-12",
+        "stale": false,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "Substack says its Recommendations network plus its app drive half of all new subscriptions and a quarter of new paid ones on the platform. Writers recommending each other is a key way to grow.",
+      "url": "https://x.com/Substack/status/1760696631156953443",
+      "quote": "powers a network that drives 50% of all new subscriptions and 25% of new paid subscriptions on Substack",
+      "published": "2024-02",
+      "topic": "channels",
+      "source_type": "company_own_page",
+      "checks": {
+        "grade": "C",
+        "link_found": true,
+        "quote_found": false,
+        "published": "2024-02-01",
+        "stale": true,
+        "has_number": false,
+        "safe": true
+      }
+    },
+    {
+      "claim": "In Microsoft and LinkedIn's 2024 Work Trend Index, 75% of knowledge workers used AI at work, but only 39% of AI users had received AI training from their company. That points to a gap: workers need to learn AI concepts on their own, including non-technical people.",
+      "url": "https://news.microsoft.com/source/2024/05/08/microsoft-and-linkedin-release-the-2024-work-trend-index-on-the-state-of-ai-at-work/",
+      "quote": "only 39% of users have received AI training from their company",
+      "published": "2024-05-08",
+      "topic": "trends",
+      "source_type": "official",
+      "checks": {
+        "grade": "B",
+        "link_found": true,
+        "quote_found": false,
+        "published": "2024-05-08",
+        "stale": true,
+        "has_number": true,
+        "safe": true,
+        "corroborated": true
+      }
+    },
+    {
+      "claim": "Newcomers to transformers often get confused by the technical terms (Query, Key, Value, Attention Heads). This is one writer's view, not survey data.",
+      "url": "https://dev.to/kushagra_gupta_13239507ec/understanding-attention-in-transformers-intuition-before-equations-1nfj",
+      "quote": "they often encounter words like Query, Key, Value, and Attention Heads and feel confused.",
+      "published": "unknown",
+      "topic": "user_pain_points",
+      "source_type": "blog",
+      "checks": {
+        "grade": "C",
+        "link_found": true,
+        "quote_found": false,
+        "published": "unknown",
+        "stale": false,
+        "has_number": false,
+        "safe": true
+      }
+    }
+  ],
+  "rejected": [],
+  "open_questions": [
+    "None of the competitor subscriber counts (The Rundown AI, TLDR AI, Techpresso) are confirmed by the newsletters themselves. They all come from roundup blogs, and the figures for The Rundown AI range from 650K to 2M+.",
+    "I found no estimate of the size of the AI/ML education or upskilling market.",
+    "I found no data on whether readers will pay for story-based technical content, or whether the format turns off practitioners who want short, direct explanations.",
+    "I didn't collect real complaints from Reddit or community forums about learning ML. The one pain-point claim comes from a single blog post.",
+    "I didn't look into how much demand there is for content on evaluation (RAGAS, LLM-as-Judge) and MLOps, the two specialist tracks.",
+    "I didn't collect research on whether quizzes and practice tests (the 'testing effect') improve learning, which is what the quiz section relies on. The search timed out.",
+    "I didn't check substitutes in detail: Gradient Ascent / AI for the Rest of Us (Sairam Sundaresan), Jay Alammar's visual explainers, StatQuest, 3Blue1Brown, Brilliant, DataCamp, ByteByteGo, and their prices.",
+    "I didn't compare beehiiv's referral and growth tools with Substack's, or check how well LinkedIn and Reddit work for getting readers."
+  ],
+  "searches": 8,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 187849,
+    "output_tokens": 7114,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  },
+  "cost_usd": 0.973676
+}

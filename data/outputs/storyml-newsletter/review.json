@@ -1,0 +1,172 @@
+{
+  "summary": "This is an unusually honest, well-labeled PRD. It correctly frames StoryML as a no-code content experiment, not an AI product. Section 16 scores match the evaluation, assumptions are marked, and the responsible-AI and explainability design (mechanism box, Issue card, stability labels, corrections log, disclosure) is strong. The main problems are in decision logic and measurement. The Go rule needs every criterion to reach 3 while AI-fit is expected to stay at 2, so Go can never happen. The North Star and Activation metrics cannot be measured with anonymous quizzes. Retention and a kill criterion rely on an open rate the PRD itself calls unreliable. The stop rule and kill criteria disagree. The three-way recall test, the riskiest-assumption test, has too small a sample, an undefined margin, a box-only arm that makes little sense without the story, and a weak ChatGPT prompt. Smaller gaps are vendor DPAs and transfers, participant consent, no cost ceiling for the experiment, one failed link, and undefined framework terms. Fix the Go rule, metric definitions and test design before leadership relies on this plan.",
+  "counts": {
+    "critical": 1,
+    "major": 7,
+    "minor": 6
+  },
+  "findings": [
+    {
+      "severity": "critical",
+      "section": "18",
+      "category": "Logic",
+      "issue": "The stage 3 Go rule needs every criterion to score at least 3. Section 16 says AI-fit (2/5) will stay low and is 'not a target to fix.' The experiment can therefore never reach Go, which breaks the main decision gate.",
+      "fix": "Rewrite the Go rule to exclude AI-fit, or say it may stay at 2 for a content product. For example: 'average \u2265 3.5 and every criterion except AI-fit \u2265 3.' Repeat the same wording in sections 16 and 19 (D8)."
+    },
+    {
+      "severity": "major",
+      "section": "6",
+      "category": "Observability",
+      "issue": "The North Star (WEL) and the AARRR Activation metric need opens and quiz attempts joined for each reader. Quizzes are anonymous with no email field (sections 10 and 14), so neither metric can be measured. The 'quiz takers vs. non-takers' recall comparison in section 9C has the same problem. 'Weekly' also does not fit a possible biweekly cadence.",
+      "fix": "Redefine WEL as a measurable aggregate: per-issue unique quiz starts divided by unique openers, counted per issue rather than per week. Measure activation with the platform's click-to-quiz link tracking. Drop the taker vs. non-taker comparison, or move it into the consented recall test."
+    },
+    {
+      "severity": "major",
+      "section": "9",
+      "category": "Evidence / experiment design",
+      "issue": "The three-way test is the riskiest-assumption test, but its design is weak. Thirty participants split three ways gives about 10 per arm, so 'ties' will mostly be noise. 'A clear margin' is never defined. The box-only arm reuses a box that maps story characters, so it makes little sense without the story. The ChatGPT arm uses 'a simple prompt', which looks like a straw man.",
+      "fix": "Set the minimum difference in advance, for example \u2265 1 of 6 quiz points, and treat the result as directional only. Build arm 2 as a standalone expository explainer of the same length. Write the ChatGPT prompt as a real practitioner would, including 'explain where the analogy breaks', and freeze it before the test. Or run two arms (story vs. explainer) with about 15 each, and test the ChatGPT arm separately."
+    },
+    {
+      "severity": "major",
+      "section": "6, 18",
+      "category": "Logic",
+      "issue": "The stop rule and the kill criteria disagree. Section 6 stops if box-only matches recall, or if subscribers fall below the floor, each on its own. Section 18 kills only if box-only or ChatGPT matches AND readers show no preference, or if subscribers are below the floor AND no channel worked. Section 9 says a ChatGPT tie means repositioning, not killing.",
+      "fix": "Keep one decision table, referenced from sections 6, 9 and 18. For each test result, say whether it leads to stop, pivot (change format or positioning) or continue, with one set of thresholds."
+    },
+    {
+      "severity": "major",
+      "section": "6, 13, 18",
+      "category": "Observability / logic",
+      "issue": "Retention, the stop rule and a kill criterion all depend on the open-rate trend. Section 6 itself says opens are inflated by email clients that pre-load images. A key go/no-go signal therefore rests on a metric the PRD calls unreliable.",
+      "fix": "Use click-based retention as the main signal: the share of subscribers who click or start a quiz in at least 1 of the last 3 issues. Keep open rate as a secondary signal only."
+    },
+    {
+      "severity": "major",
+      "section": "10",
+      "category": "Privacy",
+      "issue": "The recall test needs a quiz one week later, so participants must be contacted. That conflicts with 'pseudonymous IDs.' There is also no informed-consent step for a study with human participants.",
+      "fix": "Add a short consent form covering purpose, data kept and deletion date. Store contact emails separately from answers, linked only by a random ID. Delete both within 30 days of analysis. Add this to the personal-data table."
+    },
+    {
+      "severity": "major",
+      "section": "10",
+      "category": "Security / privacy",
+      "issue": "The PRD uses third-party processors: the newsletter platform, the quiz tool and an optional LLM provider, all likely US-based. It does not mention data processing agreements, international transfer safeguards, or checking the quiz tool for IP logging. It also does not say how to respond if an account is taken over.",
+      "fix": "Add a checklist item: confirm each vendor's DPA, transfer mechanism (for example, SCCs) and data location before issue 1. Add a 5-step account-takeover response: lock the account, rotate credentials, notify subscribers, file a report with the platform, and log the incident."
+    },
+    {
+      "severity": "major",
+      "section": "9, 15",
+      "category": "Performance / cost",
+      "issue": "No total budget is set for the experiment. The reviewer fee, quiz tool fee and recall-test costs are all unknown, so cost cannot act as a guardrail or stop signal.",
+      "fix": "Add an [OPEN QUESTION] budget ceiling for the 8-issue experiment and a per-issue cost cap. Put both in the section 6 guardrails and the section 13 cost alerts."
+    },
+    {
+      "severity": "minor",
+      "section": "18",
+      "category": "Logic",
+      "issue": "Stage 1 lists 5\u201310 named practitioners plus 2\u20133 non-technical readers, but also says the recall test needs 30+ participants. It does not say where the other 20+ come from. Section 17 S2 places the test 'before or during issues 1\u20133,' which conflicts with doing it before public beta.",
+      "fix": "Name the recruitment source for test participants (for example, community posts or the founder's network) and give one timing for S2 that matches the launch stages."
+    },
+    {
+      "severity": "minor",
+      "section": "8",
+      "category": "Logic",
+      "issue": "Several items are 'Should' even though Must-level goals depend on them. FR9 (Report an error) supports the zero-uncorrected-errors guardrail. FR16 (one-click rating) is the HEART Happiness metric. FR3 (plain summary) is the main promise to secondary readers.",
+      "fix": "Raise FR9 and FR16 to Must for the experiment, and FR3 as well. Otherwise, remove the metrics and promises that depend on them."
+    },
+    {
+      "severity": "minor",
+      "section": "7, 13",
+      "category": "Logic",
+      "issue": "Timings conflict. Section 7 sends a critical correction email 'immediately,' while sections 13 and 18 allow 72 hours. Section 13 has a heading that says 'Monthly re-check' but the text says every 3 months.",
+      "fix": "Use one SLA everywhere (for example, critical correction email within 72 hours, sooner if possible). Rename the heading to 'Quarterly re-check.'"
+    },
+    {
+      "severity": "minor",
+      "section": "5, 19",
+      "category": "Evidence",
+      "issue": "The link check for the Pillar Security source (The Rundown AI at 650,000+) failed, but the PRD presents it with no warning. The 10% Substack fee in the Porter table has no citation there. The Substack help-page confirmation was apparently rejected by source checks.",
+      "fix": "Add 'link check failed' to the Pillar citation and the sources table. Cite the Substack fee in the Porter table with its grade D source and a [NEEDS RESEARCH] marker pointing to Substack's official help page."
+    },
+    {
+      "severity": "minor",
+      "section": "8, 15, 18, 19",
+      "category": "Plain language",
+      "issue": "Framework terms are used without definitions: RICE, Kano types (Must-be, Indifferent, Reverse), HEART, AARRR, GUCCI, SRE and GA. The glossary covers ML terms but not these.",
+      "fix": "Add one-line glossary entries for each framework and Kano type, and spell out GA ('general availability') on first use."
+    },
+    {
+      "severity": "minor",
+      "section": "17",
+      "category": "Structure",
+      "issue": "The 'Prompt-injection check on inputs' row describes how the PRD itself was produced, not a product risk. It is confusing in a risk register.",
+      "fix": "Move it to the appendix as a process note. Keep the product prompt-injection risk in section 10 only."
+    }
+  ],
+  "rubric": {
+    "problem_clarity": 4,
+    "evidence_quality": 4,
+    "logic_consistency": 3,
+    "security": 4,
+    "responsible_ai": 4,
+    "observability": 3,
+    "explainability": 5,
+    "performance": 3,
+    "right_sized_plan": 4,
+    "plain_language": 4
+  },
+  "rubric_average": 3.8,
+  "link_checks": [
+    {
+      "url": "https://news.microsoft.com/source/2024/05/08/microsoft-and-linkedin-release-the-2024-work-trend-index-on-the-state-of-ai-at-work/",
+      "status": "confirmed",
+      "checked_by": "code",
+      "claim": "In Microsoft and LinkedIn's 2024 Work Trend Index, 75% of knowledge workers used AI at work, but only 39% of AI users had received AI training from their company. That points to a gap: workers need to learn AI concepts on their own, including non-technical people.",
+      "quote": "only 39% of users have received AI training from their company",
+      "grade": "B"
+    },
+    {
+      "url": "https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business",
+      "status": "confirmed",
+      "checked_by": "code",
+      "claim": "Each email that violates CAN-SPAM can bring a penalty of up to $53,088. This figure is adjusted for inflation over time, so check the current amount.",
+      "quote": "Each separate email in violation of the CAN-SPAM Act is subject to penalties of up to $53,088",
+      "grade": "A"
+    },
+    {
+      "url": "https://ghost.org/pricing/",
+      "status": "confirmed",
+      "checked_by": "code",
+      "claim": "Ghost(Pro) says on its own pricing page that it takes no payment fees, unlike Substack's 10% cut.",
+      "quote": "No payment fees \u2014 upgrade, downgrade, or cancel anytime.",
+      "grade": "B"
+    },
+    {
+      "url": "https://www.readless.app/blog/is-the-rundown-ai-newsletter-free-2026",
+      "status": "confirmed",
+      "checked_by": "code",
+      "claim": "The Rundown AI is a free daily AI news newsletter supported by ads, reported at 2M+ subscribers.",
+      "quote": "Yes \u2014 The Rundown AI's daily newsletter is free, ad-supported, with 2M+ subscribers.",
+      "grade": "D"
+    },
+    {
+      "url": "https://www.pillar.security/blog/10-best-ai-newsletters-you-must-subscribe-to",
+      "status": "fetch_failed",
+      "checked_by": "model",
+      "note": "Not fetched because the tool's usage limit was reached.",
+      "claim": "An older roundup put The Rundown AI at only 650,000+ subscribers, far below the 2M+ in recent roundups. Either it grew fast or the numbers aren't reliable. Neither figure is official.",
+      "quote": "Subscribers: 650,000+",
+      "grade": "D"
+    }
+  ],
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 69278,
+    "output_tokens": 8559,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0
+  },
+  "cost_usd": 0.448292
+}
