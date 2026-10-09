@@ -1,0 +1,42 @@
+name: dashboard
+
+# Publishes the dashboard to GitHub Pages whenever run data or the dashboard changes on main,
+# and after every prd-agent run (its commits don't trigger workflows by themselves).
+on:
+  push:
+    branches: [main]
+    paths: ["data/**", "apps/dashboard/**", "packages/frameworks/scorecard.json", "evals/rubric.json"]
+  workflow_run:
+    workflows: [prd-agent]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main   # after a prd-agent run, pick up the results it just committed
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m apps.dashboard.build --out site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

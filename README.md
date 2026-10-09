@@ -76,6 +76,8 @@ Create GitHub issues for problems found (needs `GITHUB_TOKEN` and `GITHUB_REPOSI
 
 Get a Gmail alert when the PRD is new or updated, or a run has problems: add `--alert` (setup: [`packages/integrations/`](packages/integrations/README.md)).
 
+**Dashboard:** `python -m apps.dashboard.serve` (live on your computer) or GitHub Pages. See [`apps/dashboard/`](apps/dashboard/README.md).
+
 Every run is logged automatically in `data/metrics/index.json` and `data/decisions/RUN_LOG.md`.
 
 **Automatic runs:** push a transcript to `data/transcripts/` on `main` and the `prd-agent` GitHub Action runs the pipeline and commits the results. One-time setup: see [`packages/integrations/`](packages/integrations/README.md).
@@ -96,5 +98,5 @@ Run the tests (no API key needed): `python -m unittest discover -s tests -t .`
 | 5 | Reviewer + evals | done |
 | 6 | GitHub auto-logging + Actions | done |
 | 7 | Gmail alerts on PRD updates | done |
-| 8 | Dashboard + live local reload | |
+| 8 | Dashboard + live local reload | done |
 | 9 | Observability (tracing, cost) | |
