@@ -23,6 +23,7 @@ from packages.agents.common import (
     usage_dict,
 )
 from packages.agents.guardrails.checks import MAX_CHARS, find_injection, mask_pii
+from packages.observability.tracing import span
 
 PROMPT_PATH = Path(__file__).with_name("prompt.md")
 MAX_TOKENS = 16000
@@ -82,22 +83,25 @@ class GuardrailReport:
 def review_with_claude(sanitized: str, client=None) -> tuple[dict, str, dict]:
     """Ask Claude to review the (already masked) transcript. Returns (review, model, usage)."""
     client = get_client(client)
-    message = client.beta.messages.create(
-        model=MODEL,
-        max_tokens=MAX_TOKENS,
-        betas=[FALLBACK_BETA],
-        thinking={"type": "adaptive"},
-        output_config={
-            "effort": EFFORT,
-            "format": {"type": "json_schema", "schema": REVIEW_SCHEMA},
-        },
-        system=PROMPT_PATH.read_text(),
-        messages=[{
-            "role": "user",
-            "content": f"Review this transcript.\n\n<transcript>\n{sanitized.strip()}\n</transcript>",
-        }],
-        extra_body={"fallbacks": "default"},
-    )
+    system = PROMPT_PATH.read_text()
+    with span("llm:guardrails review", effort=EFFORT) as s:
+        message = client.beta.messages.create(
+            model=MODEL,
+            max_tokens=MAX_TOKENS,
+            betas=[FALLBACK_BETA],
+            thinking={"type": "adaptive"},
+            output_config={
+                "effort": EFFORT,
+                "format": {"type": "json_schema", "schema": REVIEW_SCHEMA},
+            },
+            system=system,
+            messages=[{
+                "role": "user",
+                "content": f"Review this transcript.\n\n<transcript>\n{sanitized.strip()}\n</transcript>",
+            }],
+            extra_body={"fallbacks": "default"},
+        )
+        s.record_message(message, system)
     if message.stop_reason == "refusal":
         raise GuardrailsError(f"Model declined the review: {getattr(message, 'stop_details', None)}")
     if message.stop_reason == "max_tokens":

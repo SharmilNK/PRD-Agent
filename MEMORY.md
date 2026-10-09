@@ -30,13 +30,16 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 | 2026-10-08 | GitHub logging: run log (index.json + RUN_LOG.md) always on; issues via stdlib urllib with fingerprints (no duplicates, auto-close only checked kinds); Action on push to data/transcripts on main + manual; publish kept separate from pipeline (ADR-0007) |
 | 2026-10-08 | Gmail alerts via SMTP + app password (stdlib); events new/updated/blocked/quality_fail/error; section-level diff vs PRD before the run; HTML escaped; no secrets/addresses in metrics; alert.eml git-ignored (ADR-0008) |
 | 2026-10-08 | Dashboard: static HTML/CSS/JS (no framework), data.json built from git; validated dataviz palette; textContent for data, DOMPurify for PRD; serve.py live reload via /__version polling; Pages deploy on main + after prd-agent runs (ADR-0009) |
+| 2026-10-08 | Observability: in-house OTel-shaped JSONL traces in data/traces (metadata only, no text); per-run budget default $10 skips optional steps + budget alert; ops report (p50/p95, cost, errors, cache hit) in CLI and dashboard (ADR-0010) |
 | 2026-10-08 | Verdict rules clarified: Go = avg >= 3.5 and every criterion >= 3; No-Go = avg < 2.5 or ethics = 1; else Pivot |
 
 ## Current status
 - **Phases 0-5 are merged to `main`** (PRs 1-6, plus PR 8). 104 tests at that point.
 - **Phase 6** (run log, GitHub issues, Action): done — PR https://github.com/SharmilNK/PRD-Agent/pull/9 (into `main`)
 - **Phase 7** (Gmail alerts on new/updated PRDs and problems): done — PR https://github.com/SharmilNK/PRD-Agent/pull/10 (into `main`)
-- **Phase 8** (dashboard, live local reload, GitHub Pages): done — branch `claude/optimistic-faraday-rl7bty-phase8`, PR into `main`
+- **Phase 8** (dashboard, live local reload, GitHub Pages): done — PR https://github.com/SharmilNK/PRD-Agent/pull/11 (into `main`)
+- **Phase 9** (tracing, cost budget, operations report + dashboard section, 156 tests): done — PR https://github.com/SharmilNK/PRD-Agent/pull/12 (into `main`)
+- **All 10 planned phases (0-9) are built.** Next: user tests everything end to end.
 - First test input: `data/transcripts/storyml-newsletter.md` (ML/AI concepts taught as stories, 3 tracks, 3-tier quizzes)
 
 ## Where to resume
@@ -44,9 +47,15 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 - **All Phase 6-9 PRs target `main` directly** (not the previous phase branch), so nothing gets stranded again. Until earlier PRs merge, a later PR also shows the earlier phases' changes. Merge in order: 6 → 7 → 8 → 9.
 
 ## Pending tasks (in order)
-1. Keep building Phase 9 (user will test at the end). Then user reviews and merges PRs in order (6 → 7 → 8 → 9). **Important:** new cloud sessions start from `main`, so these memory files only load in new sessions after merge.
-2. First real run: `python -m evals.run_evals --cheap`, then full run on the StoryML transcript (needs `pip install -r requirements.txt` + API key). Not done yet: the cloud environment blocked pypi.org (403).
-3. Phase 9: Observability (tracing, cost tracking).
+1. User reviews and merges PRs in order: #9 (Phase 6) → #10 (Phase 7) → #11 (Phase 8) → #12 (Phase 9). All target `main`. **Important:** new cloud sessions start from `main`, so these memory files only load in new sessions after merge.
+2. First real test, in this order (on the user's computer, needs `pip install -r requirements.txt` + `ANTHROPIC_API_KEY`):
+   a. `python -m unittest discover -s tests -t .` (free)
+   b. `python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --dry-run` (free)
+   c. `python -m evals.run_evals --cheap` (small cost)
+   d. full run on StoryML with `--budget 5`, then `python -m apps.dashboard.serve`
+   e. set up GitHub secrets/Pages/Gmail and push a transcript to try the Action
+   Known untested-against-live items: web search/fetch result shapes, GitHub API calls, Gmail sending, Pages deploy.
+3. After testing: fix whatever the first real runs reveal; consider Slack alerts and exporting traces to Langfuse.
 
 ## Open questions
 - GitHub Pages must be enabled (Settings → Pages → Source: GitHub Actions). Pages sites are public; confirm that's OK for PRDs.
@@ -57,6 +66,7 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 - PyPI blocked in the cloud environment → real API runs must happen on the user's computer for now.
 
 ## Session log (newest first)
+- 2026-10-08 — Built Phase 9 (observability). All phases 0-9 built; PRs #9-#11 + Phase 9 PR open into main.
 - 2026-10-08 — Built Phase 8 (dashboard). Screenshot-checked light/dark/mobile; live reload verified in a real browser.
 - 2026-10-08 — Built Phase 7 (Gmail alerts).
 - 2026-10-08 — New session: found Phases 0-5 merged to main. Built Phase 6 (run log, GitHub issues, Action).

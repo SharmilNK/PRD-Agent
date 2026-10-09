@@ -11,6 +11,7 @@ A static web page that shows every PRD-Agent run. No build tools: plain HTML, CS
 - **Source quality:** research claims by grade A–D.
 - **Open problems:** critical and major Reviewer findings, and quotes not found on their page.
 - **All runs** table and the **latest PRD**.
+- **Operations:** average cost per agent, and a table of calls, p50/p95 time, error rate and cache hit rate (Phase 9).
 - A **transcript filter** at the top that updates everything below it.
 
 Hover (or tab to) any bar or point to see its numbers. Light and dark mode follow your system setting. Colors come from a checked palette that works for color-blind readers, and every status color also has a word next to it.

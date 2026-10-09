@@ -157,6 +157,43 @@ function roundedRight(x, y, w, h, r) {
   return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}Z`;
 }
 
+// Horizontal bars with their own scale, one series (cost per agent).
+function hbarValues(container, items, { format }) {
+  if (!items.length) return note(container, "No runs yet.");
+  const W = container.clientWidth || 480, row = 26, m = { t: 6, r: 56, b: 6, l: 150 };
+  const H = m.t + m.b + row * items.length, top = Math.max(...items.map((d) => d.value)) || 1;
+  const x = (v) => m.l + ((W - m.l - m.r) * v) / top;
+  const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Horizontal bar chart" });
+  s.append(svg("line", { x1: x(0), x2: x(0), y1: m.t, y2: H - m.b, class: "baseline" }));
+  items.forEach((d, i) => {
+    const y = m.t + row * i + 4, h = row - 8;
+    s.append(svg("text", { x: m.l - 8, y: y + h / 2 + 4, "text-anchor": "end" }, d.label));
+    const bar = svg("path", { d: roundedRight(x(0), y, x(d.value) - x(0), h, 4), fill: "var(--series-1)" });
+    hoverable(bar, d.tip);
+    s.append(bar);
+    s.append(svg("text", { x: x(d.value) + 6, y: y + h / 2 + 4, class: "value" }, format(d.value)));
+  });
+  container.replaceChildren(s);
+}
+
+function opsTable(ops) {
+  const t = $("ops");
+  t.replaceChildren();
+  const head = el("tr");
+  for (const h of ["Agent", "Calls", "p50 time", "p95 time", "Avg cost", "Errors", "Cache hit"]) head.append(el("th", { scope: "col" }, h));
+  const thead = el("thead");
+  thead.append(head);
+  const body = el("tbody");
+  for (const a of ops?.agents || []) {
+    const tr = el("tr");
+    const cells = [a.agent, a.calls, `${a.p50_s}s`, `${a.p95_s}s`, money(a.avg_cost_usd),
+      `${Math.round(a.error_rate * 100)}%`, `${Math.round(a.cache_hit_rate * 100)}%`];
+    cells.forEach((c, i) => tr.append(el("td", i ? { class: "num" } : {}, String(c))));
+    body.append(tr);
+  }
+  t.append(thead, body);
+}
+
 // One stacked bar, ordinal grades A-D (source quality), with legend and direct labels.
 function gradeBar(container, grades) {
   const total = Object.values(grades || {}).reduce((a, b) => a + b, 0);
@@ -288,6 +325,16 @@ function render() {
   hbarChart($("chart-scorecard"), Object.entries(details?.scores || {}).map(([id, v]) => ({
     label: DATA.labels.criteria[id] || id, value: v })), { ref: 3 });
   gradeBar($("chart-grades"), latest[focus]?.source_grades);
+  const ops = DATA.ops;
+  $("ops-sub").textContent = ops?.runs
+    ? `US dollars per call, across ${ops.runs} run${ops.runs === 1 ? "" : "s"} (all transcripts). Budget skips: ${ops.budget_skips}`
+    : "US dollars per call, across all runs";
+  hbarValues($("chart-ops"), [...(ops?.agents || [])].sort((a, b) => b.avg_cost_usd - a.avg_cost_usd).map((a) => ({
+    label: a.agent, value: a.avg_cost_usd,
+    tip: [["Avg cost per call", money(a.avg_cost_usd), true], ["Total", money(a.total_cost_usd)], ["Calls", String(a.calls)],
+          ["Typical time", `${a.p50_s}s`], ["Cache hit", `${Math.round(a.cache_hit_rate * 100)}%`]],
+  })), { format: (v) => `$${v.toFixed(2)}` });
+  opsTable(ops);
   findings(details);
   runsTable(runs);
   prdView(focus, details);

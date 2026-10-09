@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -51,6 +52,7 @@ from packages.agents.research import agent as research
 from packages.agents.research.config import AGENTS as RESEARCH_AGENTS
 from packages.agents.reviewer import agent as reviewer
 from packages.agents.scorer import agent as scorer
+from packages.observability.tracing import Tracer, run_in_context, span
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUTPUTS_DIR = REPO_ROOT / "data" / "outputs"
@@ -63,17 +65,40 @@ def _writer_step(name: str, result, duration: float) -> dict:
             "duration_s": duration}
 
 
-def _timed(fn, *args, **kwargs):
+def _timed(name: str, fn, *args, **kwargs):
+    """Run one step inside a trace span and return (result, seconds)."""
     started = time.monotonic()
-    result = fn(*args, **kwargs)
+    with span(f"step:{name}"):
+        result = fn(*args, **kwargs)
     return result, round(time.monotonic() - started, 2)
+
+
+class Budget:
+    """Spending limit for one run. Once reached, optional steps are skipped (the PRD is still written)."""
+
+    def __init__(self, limit_usd: float | None):
+        self.limit = limit_usd
+        self.skipped: list[str] = []
+
+    def allows(self, step: str, steps: list[dict]) -> bool:
+        if self.limit is None or sum(s["cost_usd"] for s in steps) < self.limit:
+            return True
+        self.skipped.append(step)
+        return False
+
+
+def default_budget() -> float | None:
+    """PRD_AGENT_MAX_COST_USD, default $10 (also when empty). Set it to 0 or 'none' for no limit."""
+    raw = (os.environ.get("PRD_AGENT_MAX_COST_USD") or "10").strip().lower()
+    return None if raw in ("0", "none") else float(raw)
 
 
 def _research_one(kind: str, transcript: str, client) -> tuple[str, object, float]:
     """Run one research agent. A failure is returned, not raised, so the other agents still count."""
     started = time.monotonic()
     try:
-        result = research.run_research(kind, transcript, client=client)
+        with span(f"step:research:{kind}"):
+            result = research.run_research(kind, transcript, client=client)
     except ImportError:
         raise
     except Exception as e:  # noqa: BLE001 - one failed agent must not stop the run
@@ -84,7 +109,9 @@ def _research_one(kind: str, transcript: str, client) -> tuple[str, object, floa
 def run_research_step(transcript: str, client, out_dir: Path) -> tuple[list, dict, list[dict]]:
     """Run all research agents in parallel. Returns (results, failures, metric steps)."""
     with ThreadPoolExecutor(max_workers=len(RESEARCH_AGENTS)) as pool:
-        outcomes = list(pool.map(lambda k: _research_one(k, transcript, client), RESEARCH_AGENTS))
+        # run_in_context: each thread's spans join this run's trace.
+        jobs = [run_in_context(_research_one, k, transcript, client) for k in RESEARCH_AGENTS]
+        outcomes = [f.result() for f in [pool.submit(job) for job in jobs]]
 
     research_dir = out_dir / "research"
     research_dir.mkdir(parents=True, exist_ok=True)
@@ -119,7 +146,7 @@ def run_evaluation_step(transcript: str, brief: str, notes: list[str], client, o
     """
     steps, summary = [], {}
     try:
-        result, d_time = _timed(debate.run_debate, transcript, research=brief, notes=notes, client=client)
+        result, d_time = _timed("debate", debate.run_debate, transcript, research=brief, notes=notes, client=client)
     except ImportError:
         raise
     except Exception as e:  # noqa: BLE001
@@ -131,7 +158,7 @@ def run_evaluation_step(transcript: str, brief: str, notes: list[str], client, o
     steps.append({"agent": "debate", "model": result.model, "calls": result.calls, "rounds": debate.ROUNDS,
                   "usage": result.usage, "cost_usd": result.cost_usd, "duration_s": d_time})
     try:
-        scores, s_time = _timed(scorer.run_scorer, transcript, research=brief, debate_md=debate_md, client=client)
+        scores, s_time = _timed("scorer", scorer.run_scorer, transcript, research=brief, debate_md=debate_md, client=client)
     except ImportError:
         raise
     except Exception as e:  # noqa: BLE001
@@ -160,15 +187,37 @@ def run(
     do_debate: bool = True,
     do_review: bool = True,
     revise: bool = True,
+    budget_usd: float | None | str = "default",
+    traces_dir: Path | None = None,
 ) -> dict:
-    transcript = transcript_path.read_text()
+    """Run the pipeline with tracing and a cost budget. Writes the PRD, metrics and the trace."""
     name = transcript_path.stem
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + f"-{name}"
+    budget = Budget(default_budget() if budget_usd == "default" else budget_usd)
+    tracer = Tracer(run_id)
+    with tracer.active(), span("run", transcript=name) as root:
+        metrics = _pipeline(transcript_path, run_id, budget, client, outputs_dir, guardrail_review,
+                            do_research, do_debate, do_review, revise)
+        root.set(status=metrics["status"], cost_usd=metrics["total_cost_usd"])
+
+    traces_dir = traces_dir or metrics_dir.parent / "traces"
+    trace_path = tracer.save(traces_dir / f"{run_id}.jsonl")
+    metrics["trace"] = {"file": str(trace_path), **tracer.summary()}
+    metrics["budget"] = {"limit_usd": budget.limit, "spent_usd": metrics["total_cost_usd"], "skipped": budget.skipped}
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    (metrics_dir / f"{run_id}.json").write_text(json.dumps(metrics, indent=2) + "\n")
+    return metrics
+
+
+def _pipeline(transcript_path: Path, run_id: str, budget: Budget, client, outputs_dir: Path,
+              guardrail_review: bool, do_research: bool, do_debate: bool, do_review: bool, revise: bool) -> dict:
+    transcript = transcript_path.read_text()
+    name = transcript_path.stem
     out_dir = outputs_dir / name
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: Guardrails
-    report, g_time = _timed(guardrails.run_guardrails, transcript, client=client, use_llm=guardrail_review)
+    report, g_time = _timed("guardrails", guardrails.run_guardrails, transcript, client=client, use_llm=guardrail_review)
     (out_dir / "guardrails.json").write_text(json.dumps(report.to_json(), indent=2) + "\n")
     steps = [{
         "agent": "guardrails",
@@ -189,15 +238,16 @@ def run(
     if report.decision != "block":
         # Step 2: Research
         brief, research_results = "", []
-        if do_research:
-            research_results, failed, research_steps = run_research_step(report.sanitized_transcript, client, out_dir)
+        if do_research and budget.allows("research", steps):
+            with span("step:research"):
+                research_results, failed, research_steps = run_research_step(report.sanitized_transcript, client, out_dir)
             steps.extend(research_steps)
             metrics["research_failed"] = failed
             brief = (out_dir / "research_brief.md").read_text()
 
         # Steps 3-4: Debate and Scorer
         evaluation = ""
-        if do_debate:
+        if do_debate and budget.allows("debate", steps):
             evaluation, eval_steps, metrics["evaluation"] = run_evaluation_step(
                 report.sanitized_transcript, brief, report.notes_for_prd, client, out_dir
             )
@@ -205,7 +255,7 @@ def run(
 
         # Step 5: PRD Writer
         result, p_time = _timed(
-            prd_writer.write_prd, report.sanitized_transcript, client=client,
+            "prd_writer", prd_writer.write_prd, report.sanitized_transcript, client=client,
             notes=report.notes_for_prd, research=brief, evaluation=evaluation,
         )
         prd_path = out_dir / "PRD.md"
@@ -224,9 +274,9 @@ def run(
 
         # Step 7: Reviewer
         review = None
-        if do_review:
+        if do_review and budget.allows("reviewer", steps):
             try:
-                review, r_time = _timed(reviewer.review_prd, prd, evaluation=evaluation, research=brief,
+                review, r_time = _timed("reviewer", reviewer.review_prd, prd, evaluation=evaluation, research=brief,
                                         quality=quality, claims=claims, client=client)
             except ImportError:
                 raise
@@ -248,11 +298,12 @@ def run(
 
         # Step 8: one revision if needed
         metrics["revised"] = False
-        if revise and ((review and review.needs_revision) or not quality["passed"]):
+        if revise and ((review and review.needs_revision) or not quality["passed"]) \
+                and budget.allows("revision", steps):
             feedback = reviewer.revision_feedback(review, quality)
             try:
                 revised, v_time = _timed(
-                    prd_writer.write_prd, report.sanitized_transcript, client=client, notes=report.notes_for_prd,
+                    "prd_writer:revision", prd_writer.write_prd, report.sanitized_transcript, client=client, notes=report.notes_for_prd,
                     research=brief, evaluation=evaluation, draft=prd, feedback=feedback,
                 )
             except ImportError:
@@ -279,8 +330,6 @@ def run(
 
     metrics["total_cost_usd"] = round(sum(s["cost_usd"] for s in steps), 6)
     metrics["total_duration_s"] = round(sum(s["duration_s"] for s in steps), 2)
-    metrics_dir.mkdir(parents=True, exist_ok=True)
-    (metrics_dir / f"{run_id}.json").write_text(json.dumps(metrics, indent=2) + "\n")
     return metrics
 
 
@@ -333,6 +382,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--no-revise", action="store_true", help="never run the revision pass")
     parser.add_argument("--github-issues", action="store_true",
                         help="create/update GitHub issues (needs GITHUB_TOKEN and GITHUB_REPOSITORY)")
+    parser.add_argument("--budget", type=float, default=None,
+                        help="max cost in USD for this run (default: PRD_AGENT_MAX_COST_USD or 10); "
+                             "optional steps are skipped once it is reached")
     parser.add_argument("--alert", action="store_true",
                         help="email a Gmail alert if the PRD is new/updated or the run had problems")
     args = parser.parse_args(argv)
@@ -345,7 +397,8 @@ def main(argv: list[str]) -> int:
     try:
         metrics = run(args.transcript, guardrail_review=not args.skip_guardrail_review,
                       do_research=not args.skip_research, do_debate=not args.skip_debate,
-                      do_review=not args.skip_review, revise=not args.no_revise)
+                      do_review=not args.skip_review, revise=not args.no_revise,
+                      budget_usd="default" if args.budget is None else args.budget)
     except ImportError:
         print("The anthropic package is missing. Run: pip install -r requirements.txt", file=sys.stderr)
         return 1
@@ -403,6 +456,10 @@ def main(argv: list[str]) -> int:
           f"unknown links {len(q['links']['unknown_links'])}, score mismatches {len(q['scores']['mismatches'])}, "
           f"avg sentence {q['readability']['avg_sentence_words']} words")
     print(f"Quality gate:    {metrics['quality_gate'].upper()}")
+    b, t = metrics["budget"], metrics["trace"]
+    if b["skipped"]:
+        print(f"Budget:          ${b['limit_usd']:.2f} reached - skipped: {', '.join(b['skipped'])}")
+    print(f"Trace:           {t['llm_calls']} Claude calls, cache hit {t['cache_hit_rate']:.0%}, {t['file']}")
     return 0
 
 

@@ -52,10 +52,13 @@ def transcript_details(outputs: Path, name: str) -> dict:
 def collect(data_dir: Path = DATA) -> dict:
     runs = (_load(data_dir / "metrics" / "index.json") or {}).get("runs", [])
     names = sorted({r["transcript"] for r in runs})
+    from packages.observability.report import build_report, load_runs
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "demo": False,
         "runs": runs,
+        "ops": build_report(load_runs(data_dir / "metrics")),
         "transcripts": {n: transcript_details(data_dir / "outputs", n) for n in names},
         "labels": _labels(),
     }
@@ -89,10 +92,19 @@ def demo_data() -> dict:
     prd = ("# PRD: Sample Newsletter\n\n> **Sample data** for previewing the dashboard.\n\n"
            "## 1. Press Release and FAQ\nA short sample section.\n\n## 16. Product Evaluation Scorecard\n"
            "| Criterion | Score |\n|---|---|\n" + "\n".join(f"| {labels['criteria'][k]} | {v}/5 |" for k, v in scores.items()))
+    ops_rows = [("prd_writer", 0.92, 95, 140, 0.31), ("prd_writer (revision)", 0.71, 80, 110, 0.62),
+                ("research", 0.38, 60, 120, 0.0), ("debate", 0.45, 70, 95, 0.0), ("reviewer", 0.33, 45, 70, 0.0),
+                ("scorer", 0.21, 30, 40, 0.0), ("guardrails", 0.03, 6, 9, 0.0)]
+    ops = {"runs": 3, "completed": 3, "total_cost_usd": 8.48, "avg_cost_per_run_usd": 2.83, "p50_run_s": 440,
+           "p95_run_s": 467, "budget_skips": 0,
+           "agents": [{"agent": a, "calls": 9 if a == "research" else 3, "p50_s": p50, "p95_s": p95,
+                       "avg_cost_usd": c, "total_cost_usd": round(c * 3, 2), "error_rate": 0.0,
+                       "cache_hit_rate": hit} for a, c, p50, p95, hit in ops_rows]}
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "demo": True,
         "runs": runs,
+        "ops": ops,
         "transcripts": {"sample-newsletter": {
             "has_prd": True, "prd": prd, "verdict": "go", "average": 3.6, "scores": scores, "gucci": None,
             "unresolved_concerns": ["Who pays, and how much?"],

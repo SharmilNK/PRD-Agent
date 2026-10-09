@@ -78,6 +78,8 @@ Get a Gmail alert when the PRD is new or updated, or a run has problems: add `--
 
 **Dashboard:** `python -m apps.dashboard.serve` (live on your computer) or GitHub Pages. See [`apps/dashboard/`](apps/dashboard/README.md).
 
+**Observability:** every run saves a trace in `data/traces/`, has a cost budget (`--budget`, default $10), and `python -m packages.observability.report` shows speed, cost, errors and cache use per agent. See [`packages/observability/`](packages/observability/README.md).
+
 Every run is logged automatically in `data/metrics/index.json` and `data/decisions/RUN_LOG.md`.
 
 **Automatic runs:** push a transcript to `data/transcripts/` on `main` and the `prd-agent` GitHub Action runs the pipeline and commits the results. One-time setup: see [`packages/integrations/`](packages/integrations/README.md).
@@ -99,4 +101,4 @@ Run the tests (no API key needed): `python -m unittest discover -s tests -t .`
 | 6 | GitHub auto-logging + Actions | done |
 | 7 | Gmail alerts on PRD updates | done |
 | 8 | Dashboard + live local reload | done |
-| 9 | Observability (tracing, cost) | |
+| 9 | Observability (tracing, cost) | done |
