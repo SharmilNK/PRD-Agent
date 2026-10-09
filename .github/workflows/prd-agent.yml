@@ -1,0 +1,60 @@
+name: prd-agent
+
+# Runs the PRD-Agent pipeline when a transcript is added or changed on main,
+# or by hand from the Actions tab. Results are committed back to the repo.
+on:
+  push:
+    branches: [main]
+    paths: ["data/transcripts/*.md"]
+  workflow_dispatch:
+    inputs:
+      transcript:
+        description: "Transcript to run, e.g. data/transcripts/storyml-newsletter.md"
+        required: true
+
+permissions:
+  contents: write   # commit outputs, metrics and the run log
+  issues: write     # create and update issues
+
+concurrency:
+  group: prd-agent
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Run PRD-Agent on new or changed transcripts
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Passed as environment variables (never pasted into the script) to avoid injection.
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+          INPUT_TRANSCRIPT: ${{ inputs.transcript }}
+        run: python -m apps.orchestrator.ci
+
+      - name: Commit outputs, metrics and run log
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/outputs data/metrics data/decisions
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+          else
+            git commit -m "PRD-Agent run results"
+            git pull --rebase
+            git push
+          fi

@@ -25,6 +25,9 @@ Usage:
     python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --skip-research
     python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --skip-debate
     python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --skip-review --no-revise
+    python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --github-issues
+
+After every run, the run is added to data/metrics/index.json and data/decisions/RUN_LOG.md.
 """
 
 from __future__ import annotations
@@ -37,6 +40,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
+from apps.orchestrator.publish import publish
 from evals.quality_checks import run_checks
 from packages.agents.common import WEB_SEARCH_USD
 from packages.agents.debate import agent as debate
@@ -305,6 +309,17 @@ def dry_run(transcript_path: Path) -> None:
     print("\n--- user message to PRD Writer ---\n" + user_message)
 
 
+def _print_github(gh: dict) -> None:
+    if "created" in gh:
+        print(f"GitHub issues:   {len(gh['created'])} created, {len(gh['commented'])} updated, "
+              f"{len(gh['closed'])} closed")
+    elif "error" in gh:
+        print(f"GitHub issues:   FAILED - {gh['error']} (plan saved to issues.plan.json)")
+    else:
+        note = f" ({gh['skipped']})" if "skipped" in gh else ""
+        print(f"GitHub issues:   {gh['planned']} planned, not sent{note}; see issues.plan.json")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Turn a transcript into a PRD.md")
     parser.add_argument("transcript", type=Path)
@@ -315,6 +330,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--skip-debate", action="store_true", help="skip the Advocate/Skeptic debate and Scorer")
     parser.add_argument("--skip-review", action="store_true", help="skip the Reviewer (free checks still run)")
     parser.add_argument("--no-revise", action="store_true", help="never run the revision pass")
+    parser.add_argument("--github-issues", action="store_true",
+                        help="create/update GitHub issues (needs GITHUB_TOKEN and GITHUB_REPOSITORY)")
     args = parser.parse_args(argv)
 
     if args.dry_run:
@@ -332,10 +349,13 @@ def main(argv: list[str]) -> int:
         print(f"Run failed: {e}", file=sys.stderr)
         return 1
 
+    gh = publish(metrics, OUTPUTS_DIR, METRICS_DIR, github=args.github_issues)
+
     g = metrics["guardrails"]
     print(f"Guardrails:      {g['decision'].upper()}")
     for reason in g["reasons"]:
         print(f"  - {reason}")
+    _print_github(gh)
     if metrics["status"] == "blocked":
         print("Run stopped by guardrails. See data/outputs/<name>/guardrails.json")
         return 1

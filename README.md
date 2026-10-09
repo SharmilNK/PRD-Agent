@@ -72,6 +72,12 @@ Each run writes:
 
 Check a finished PRD for free: `python -m evals.quality_checks data/outputs/storyml-newsletter`
 
+Create GitHub issues for problems found (needs `GITHUB_TOKEN` and `GITHUB_REPOSITORY`): add `--github-issues`.
+
+Every run is logged automatically in `data/metrics/index.json` and `data/decisions/RUN_LOG.md`.
+
+**Automatic runs:** push a transcript to `data/transcripts/` on `main` and the `prd-agent` GitHub Action runs the pipeline and commits the results. One-time setup: see [`packages/integrations/`](packages/integrations/README.md).
+
 Run the eval cases (costs money): `python -m evals.run_evals` (or `--cheap` for a quick smoke test)
 
 Run the tests (no API key needed): `python -m unittest discover -s tests -t .`
@@ -86,7 +92,7 @@ Run the tests (no API key needed): `python -m unittest discover -s tests -t .`
 | 3 | Market, Standards, Tech research agents with citations | done |
 | 4 | Advocate vs. Skeptic debate + Scorer | done |
 | 5 | Reviewer + evals | done |
-| 6 | GitHub auto-logging + Actions | |
+| 6 | GitHub auto-logging + Actions | done |
 | 7 | Slack / Gmail alerts | |
 | 8 | Dashboard + live local reload | |
 | 9 | Observability (tracing, cost) | |
