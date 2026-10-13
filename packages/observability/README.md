@@ -21,7 +21,7 @@ A run **never costs more than its limit**. Before every Claude call, the code re
 
 Priority when money is tight:
 1. Guardrails
-2. **$1.20 is kept aside for the PRD Writer**, so the PRD is always written
+2. **$0.90 is kept aside for the PRD Writer**, so the PRD is always written
 3. Research (one agent at a time, in the order market, standards, tech, when there isn't room for all three at once), then the debate and Scorer, using what is left
 4. PRD Writer (gets the kept money plus anything left)
 5. Reviewer and revision, only if money is still left
@@ -29,9 +29,13 @@ Priority when money is tight:
 Skipped steps are listed in the metrics, printed at the end of the run, and trigger a `budget` Gmail alert.
 
 - Change it per run: `--budget 3`
-- Or for all runs: `PRD_AGENT_MAX_COST_USD=3` (local) or the repository variable of the same name (GitHub Action). Use `none` for no limit. The smallest allowed limit is $0.75.
+- Or for all runs: `PRD_AGENT_MAX_COST_USD=3` (local) or the repository variable of the same name (GitHub Action). Use `none` for no limit. The smallest allowed limit is $0.95.
 
-**What $2 buys (from the first real run, 2026-10-09, which cost $5.93 with no hard limit):** research ~$2.47 at 8/6/5 searches (now 4/3/3), debate $0.54, Scorer $0.21, PRD Writer $1.00, Reviewer $0.45, revision $1.25. So with the $2 limit, expect the PRD plus *part* of the research and debate; the Reviewer and revision usually won't fit.
+**Where the money goes.** The first real run (2026-10-09, all Opus, no hard limit) cost $5.93: research $2.47, revision $1.25, PRD Writer $1.00, debate $0.54, Reviewer $0.45, Scorer $0.21. Since then (ADR-0012):
+- Sonnet reads and judges (guardrails, research, debate, Scorer, Reviewer); Opus only writes the PRD.
+- The PRD is short (2,500-3,500 words), searches are 2/2/1, the Reviewer opens 3 links, and the revision runs only for critical problems.
+
+Estimate (not yet measured live): **standard ~$1.40 per run**, **lean ~$1** (`--lean` or `PRD_AGENT_PROFILE=lean`: 1 search per agent, 1 debate round, no link check, less PRD thinking). A revision, when needed, adds ~$0.50 (still inside the $2 limit).
 
 ## 3. Operations report (`report.py`)
 ```bash

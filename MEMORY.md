@@ -32,6 +32,7 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 | 2026-10-08 | Dashboard: static HTML/CSS/JS (no framework), data.json built from git; validated dataviz palette; textContent for data, DOMPurify for PRD; serve.py live reload via /__version polling; Pages deploy on main + after prd-agent runs (ADR-0009) |
 | 2026-10-08 | Observability: in-house OTel-shaped JSONL traces in data/traces (metadata only, no text); per-run budget default $10 skips optional steps + budget alert; ops report (p50/p95, cost, errors, cache hit) in CLI and dashboard (ADR-0010) |
 | 2026-10-13 | Hard cost limit, default $2: every Claude call reserves its worst case first; $1.20 kept for the PRD Writer; research sequential when tight; searches 8/6/5 → 4/3/3 (ADR-0011) |
+| 2026-10-13 | Cheaper runs: Sonnet 5.5 for guardrails/research/debate/scorer/reviewer, Opus 5.5 only for PRD Writer; short PRD (2.5-3.5k words, 32k max tokens); searches 2/2/1; 3 links; revision only on critical; `--lean` profile ~$1 (ADR-0012) |
 | 2026-10-08 | Verdict rules clarified: Go = avg >= 3.5 and every criterion >= 3; No-Go = avg < 2.5 or ethics = 1; else Pivot |
 
 ## Current status
@@ -40,6 +41,7 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 - **Phase 7** (Gmail alerts on new/updated PRDs and problems): done — PR https://github.com/SharmilNK/PRD-Agent/pull/10 (into `main`)
 - **Phase 8** (dashboard, live local reload, GitHub Pages): done — PR https://github.com/SharmilNK/PRD-Agent/pull/11 (into `main`)
 - **Phase 9** (tracing, cost budget, operations report + dashboard section, 156 tests): done — PR https://github.com/SharmilNK/PRD-Agent/pull/12 (into `main`)
+- **Cost work** (hard $2 limit + cheaper models, short PRD, lean mode; 175 tests): PR https://github.com/SharmilNK/PRD-Agent/pull/22 (into `main`), not yet tested live
 - **All 10 planned phases (0-9) are built.** Next: user tests everything end to end.
 - First test input: `data/transcripts/storyml-newsletter.md` (ML/AI concepts taught as stories, 3 tracks, 3-tier quizzes)
 
@@ -53,13 +55,13 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
    a. `python -m unittest discover -s tests -t .` (free)
    b. `python -m apps.orchestrator.run data/transcripts/storyml-newsletter.md --dry-run` (free)
    c. `python -m evals.run_evals --cheap` (small cost)
-   d. full run on StoryML with `--budget 5`, then `python -m apps.dashboard.serve`
+   d. full run on StoryML (default $2 limit; try `--lean` too, compare cost and quality), then `python -m apps.dashboard.serve`
    e. set up GitHub secrets/Pages/Gmail and push a transcript to try the Action
    Known untested-against-live items: web search/fetch result shapes, GitHub API calls, Gmail sending, Pages deploy.
 3. After testing: fix whatever the first real runs reveal; consider Slack alerts and exporting traces to Langfuse.
 
 ## Open questions
-- At $2 on Opus 5.5 the full pipeline doesn't fit. Options offered: shorter PRD target, cheaper model for research/debate, or accept a leaner run.
+- After the first real cheap run: is the short PRD good enough? Is Sonnet as Reviewer strict enough? (compare eval scores)
 - GitHub Pages must be enabled (Settings → Pages → Source: GitHub Actions). Pages sites are public; confirm that's OK for PRDs.
 - Gmail alerts need a Gmail app password set as `GMAIL_ADDRESS` / `GMAIL_APP_PASSWORD` / `ALERT_TO` (local env or repo secrets). Not set up yet.
 - Cloud environment: allow `pypi.org` and `files.pythonhosted.org` so the SDK can be installed and tested in cloud sessions?
@@ -70,6 +72,7 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 - PyPI blocked in the cloud environment → real API runs must happen on the user's computer for now.
 
 ## Session log (newest first)
+- 2026-10-13 — Cut cost: Sonnet for reading/judging, short PRD, 2/2/1 searches, `--lean` mode (est. standard ~$1.40, lean ~$1). Same PR.
 - 2026-10-13 — User wants max $2 per run. Added a hard budget (reserve before every call), PR open from `claude/optimistic-faraday-rl7bty`.
 - 2026-10-09 — First real Action run: credit error (billing) + commit-step bug (fixed: add only existing folders, data/traces/.gitkeep, flushed CI logs).
 - 2026-10-08 — Built Phase 9 (observability). All phases 0-9 built; PRs #9-#11 + Phase 9 PR open into main.

@@ -53,7 +53,7 @@ class DebateTests(unittest.TestCase):
         self.assertIn("advocate turn 3", last)  # the round-2 answer
 
     def test_cost_adds_up(self):
-        self.assertAlmostEqual(self.result.cost_usd, 6 * (1000 * 4 + 2000 * 20) / 1e6)
+        self.assertAlmostEqual(self.result.cost_usd, 6 * (1000 * 2 + 2000 * 10) / 1e6)  # Sonnet prices
 
     def test_transcript_md(self):
         md = self.result.transcript_md()

@@ -16,7 +16,7 @@ from pathlib import Path
 
 from packages.agents.common import (
     FALLBACK_BETA,
-    MODEL,
+    MODELS,
     estimate_cost,
     get_client,
     text_of,
@@ -27,6 +27,7 @@ from packages.observability.budget import budget_call
 from packages.observability.tracing import span
 
 PROMPT_PATH = Path(__file__).with_name("prompt.md")
+MODEL = MODELS["guardrails"]
 MAX_TOKENS = 16000
 EFFORT = "low"
 
@@ -71,7 +72,7 @@ class GuardrailReport:
 
     @property
     def cost_usd(self) -> float:
-        return estimate_cost(self.usage)
+        return estimate_cost(self.usage, self.model)
 
     def to_json(self) -> dict:
         """Report for saving. Leaves out the transcript text itself."""
@@ -86,7 +87,7 @@ def review_with_claude(sanitized: str, client=None) -> tuple[dict, str, dict]:
     client = get_client(client)
     system = PROMPT_PATH.read_text()
     with span("llm:guardrails review", effort=EFFORT) as s, \
-            budget_call("guardrails review", len(system) + len(sanitized), MAX_TOKENS) as (allowed, settle):
+            budget_call("guardrails review", len(system) + len(sanitized), MAX_TOKENS, model=MODEL) as (allowed, settle):
         message = client.beta.messages.create(
             model=MODEL,
             max_tokens=allowed,

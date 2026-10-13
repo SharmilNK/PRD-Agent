@@ -1,14 +1,14 @@
 # Research agents (Phase 3)
 
-Three agents search the web at the same time and give the PRD Writer **checked** facts with sources.
+Three agents (on Claude Sonnet, to save cost) search the web at the same time and give the PRD Writer **checked** facts with sources.
 
 | Agent | Max searches | Which sites | Freshness limit |
 |---|---|---|---|
-| Market | 8 | Open web (every source is graded) | 2 years |
-| Standards | 6 | Official sites only (NIST, OWASP, EU law, ISO, W3C, FTC, Microsoft/Google responsible-AI pages, ...) | 1 year |
-| Tech | 5 | Open web (every source is graded) | 2 years |
+| Market | 2 | Open web (every source is graded) | 2 years |
+| Standards | 2 | Official sites only (NIST, OWASP, EU law, ISO, W3C, FTC, Microsoft/Google responsible-AI pages, ...) | 1 year |
+| Tech | 1 | Open web (every source is graded) | 2 years |
 
-Change these numbers and the site list in [`config.py`](config.py). Search cost is about $0.01 per search (max ~$0.19 per run), plus tokens.
+Change these numbers and the site list in [`config.py`](config.py). Search cost is about $0.01 per search (max ~$0.05 per run), plus tokens. Each search adds ~25-35k tokens of page text, which costs more than the search itself. Lean mode (`--lean`) uses 1 search per agent.
 
 ## How sources are checked ([`sources.py`](sources.py), plain code, no AI)
 

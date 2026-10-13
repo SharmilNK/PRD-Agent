@@ -14,14 +14,15 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from packages.agents.common import create_message, estimate_cost, run_tool_turn, text_of, usage_dict
+from packages.agents.common import MODELS, create_message, estimate_cost, run_tool_turn, text_of, usage_dict
 from packages.agents.research.sources import NUMBER_RE, quote_found
 
 HERE = Path(__file__).parent
 RUBRIC_PATH = HERE.parents[2] / "evals" / "rubric.json"
-MAX_LINKS = 5
-MAX_PAGE_TOKENS = 8000
-EFFORT = "high"
+MODEL = MODELS["reviewer"]
+MAX_LINKS = 3
+MAX_PAGE_TOKENS = 4000
+EFFORT = "medium"
 LINK_EFFORT = "low"
 SEVERITIES = ["critical", "major", "minor"]
 
@@ -99,7 +100,7 @@ def check_links(claims: list[dict], client=None) -> tuple[list[dict], dict]:
             "max_content_tokens": MAX_PAGE_TOKENS}
     message, content, usage, _ = run_tool_turn(
         client, system=(HERE / "link_check.md").read_text(), user=f"Check these sources:\n\n{listing}",
-        tools=[tool], effort=LINK_EFFORT, error=ReviewerError, label="link check",
+        tools=[tool], effort=LINK_EFFORT, error=ReviewerError, label="link check", model=MODEL,
     )
     reported = {c.get("url"): c for c in _extract_json(text_of(message)).get("checks", [])}
     pages = fetched_pages(content)
@@ -118,7 +119,7 @@ def revision_feedback(review: "ReviewResult | None", quality: dict) -> str:
     lines = []
     if review:
         for f in review.findings:
-            if f["severity"] in ("critical", "major"):
+            if f["severity"] == "critical":
                 lines.append(f"- [{f['severity']}] Section {f['section']} ({f['category']}): {f['issue']} Fix: {f['fix']}")
         for l in review.link_checks:
             if l["status"] == "not_found":
@@ -176,15 +177,16 @@ class ReviewResult:
 
     @property
     def cost_usd(self) -> float:
-        return estimate_cost(self.usage)
+        return estimate_cost(self.usage, self.model)
 
     def count(self, severity: str) -> int:
         return sum(f["severity"] == severity for f in self.findings)
 
     @property
     def needs_revision(self) -> bool:
-        return bool(self.count("critical") or self.count("major")
-                    or any(l["status"] == "not_found" for l in self.link_checks))
+        """Rewrite only for critical problems or a quote not found on its page. Major findings become
+        GitHub issues instead: a full rewrite costs about as much as writing the PRD again."""
+        return bool(self.count("critical") or any(l["status"] == "not_found" for l in self.link_checks))
 
     def to_json(self) -> dict:
         return {
@@ -215,7 +217,7 @@ def review_prd(prd: str, evaluation: str = "", research: str = "", quality: dict
         "Review the PRD and score it on the rubric.",
     ]))
     message = create_message(
-        client, system=(HERE / "prompt.md").read_text(), user=user, effort=EFFORT,
+        client, system=(HERE / "prompt.md").read_text(), user=user, effort=EFFORT, model=MODEL,
         error=ReviewerError, label="reviewer",
         output_format={"type": "json_schema", "schema": review_schema(rubric)},
     )

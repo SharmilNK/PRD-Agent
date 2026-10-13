@@ -12,11 +12,12 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from packages.agents.common import create_message, estimate_cost, text_of, usage_dict
+from packages.agents.common import MODELS, create_message, estimate_cost, text_of, usage_dict
 
 HERE = Path(__file__).parent
 SCORECARD_PATH = HERE.parents[1] / "frameworks" / "scorecard.json"
-EFFORT = "high"
+MODEL = MODELS["scorer"]
+EFFORT = "medium"
 GUCCI_KEYS = ["goals_mission", "unmet_needs", "competition", "customer_segmentation", "integrated_ecosystem"]
 
 
@@ -152,7 +153,7 @@ class ScoreResult:
 
     @property
     def cost_usd(self) -> float:
-        return estimate_cost(self.usage)
+        return estimate_cost(self.usage, self.model)
 
     def to_json(self) -> dict:
         return {
@@ -197,7 +198,7 @@ def run_scorer(transcript: str, research: str = "", debate_md: str = "", client=
         "Run GUCCI, then score every criterion.",
     ]))
     message = create_message(
-        client, system=(HERE / "prompt.md").read_text(), user=user, effort=EFFORT,
+        client, system=(HERE / "prompt.md").read_text(), user=user, effort=EFFORT, model=MODEL,
         error=ScorerError, label="scorer",
         output_format={"type": "json_schema", "schema": output_schema(scorecard)},
     )

@@ -15,11 +15,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from packages.agents.common import create_message, estimate_cost, text_of, usage_dict
+from packages.agents.common import MODELS, create_message, estimate_cost, text_of, usage_dict
 
 HERE = Path(__file__).parent
 ROUNDS = 2
-EFFORT = "medium"
+MODEL = MODELS["debate"]
+EFFORT = "low"
 
 
 class DebateError(RuntimeError):
@@ -37,7 +38,7 @@ class DebateResult:
 
     @property
     def cost_usd(self) -> float:
-        return estimate_cost(self.usage)
+        return estimate_cost(self.usage, self.model)
 
     def transcript_md(self) -> str:
         """The debate as readable Markdown (saved as debate.md, and read by the Scorer)."""
@@ -74,7 +75,7 @@ class _Caller:
     def __call__(self, prompt_file: str, user: str, label: str) -> str:
         message = create_message(
             self.client, system=(HERE / prompt_file).read_text(), user=user,
-            effort=EFFORT, error=DebateError, label=label,
+            effort=EFFORT, error=DebateError, label=label, model=MODEL, max_tokens=8000,
         )
         for k, v in usage_dict(message).items():
             self.usage[k] = self.usage.get(k, 0) + v
@@ -89,7 +90,7 @@ def run_debate(transcript: str, research: str = "", notes: list[str] | None = No
     context = advocate_context(transcript, research, notes or [])
 
     pitch = call("advocate.md", context + (
-        "\n\nWrite the pitch for this product in at most 400 words: the problem, who it is for, "
+        "\n\nWrite the pitch for this product in at most 250 words: the problem, who it is for, "
         "the solution, why it is better than alternatives, the wow moment, and how it makes money. "
         "Use only evidence from the context above."
     ), "advocate pitch")
@@ -97,19 +98,21 @@ def run_debate(transcript: str, research: str = "", notes: list[str] | None = No
     turns: list[dict] = []
     for r in range(1, rounds + 1):
         challenge = call("skeptic.md", debate_so_far(pitch, turns) + (
-            f"\n\nThis is round {r} of {rounds}. Give your strongest challenges."
+            f"\n\nThis is round {r} of {rounds}. Give your 3 strongest challenges, numbered, "
+            "at most 2 sentences each."
         ), f"skeptic round {r}")
         turns.append({"round": r, "speaker": "skeptic", "text": challenge})
 
         answer = call("advocate.md", context + "\n\n" + debate_so_far(pitch, turns) + (
             f"\n\nAnswer the Skeptic's round {r} challenges one by one, by number. "
-            "Use evidence from your context; concede what you can't support."
+            "Use evidence from your context; concede what you can't support. At most 200 words."
         ), f"advocate round {r}")
         turns.append({"round": r, "speaker": "advocate", "text": answer})
 
     closing = call("skeptic.md", debate_so_far(pitch, turns) + (
         "\n\nThe debate is over. Write a short closing statement with two lists: "
-        "'Resolved' (challenges answered well) and 'Unresolved' (still open, with what would settle each)."
+        "'Resolved' (challenges answered well) and 'Unresolved' (still open, with what would settle each). "
+        "At most 150 words."
     ), "skeptic closing")
 
     return DebateResult(pitch=pitch, turns=turns, closing=closing, model=call.model,

@@ -73,7 +73,7 @@ class Span:
             stop_reason=getattr(message, "stop_reason", None),
             request_id=getattr(message, "_request_id", None),
             web_searches=searches,
-            cost_usd=round(estimate_cost(usage) + searches * WEB_SEARCH_USD, 6),
+            cost_usd=round(estimate_cost(usage, getattr(message, "model", None)) + searches * WEB_SEARCH_USD, 6),
             **{f"tokens.{k.replace('_input_tokens', '').replace('_tokens', '')}": v for k, v in usage.items()},
         )
         if system is not None:

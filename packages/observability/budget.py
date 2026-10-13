@@ -18,10 +18,24 @@ import contextvars
 import threading
 from contextlib import contextmanager
 
-from packages.agents.common import PRICE_PER_MTOK, WEB_SEARCH_USD, estimate_cost, usage_dict
+from packages.agents.common import FALLBACK_MODEL, MODEL, WEB_SEARCH_USD, estimate_cost, prices_for, usage_dict
 
-IN_USD = PRICE_PER_MTOK["input_tokens"] / 1_000_000
-OUT_USD = PRICE_PER_MTOK["output_tokens"] / 1_000_000
+
+def _reserve_price(model: str, field: str) -> float:
+    """Price used when reserving: the dearer of the model and the model a safety fallback may use."""
+    options = [model, FALLBACK_MODEL.get(model, model)]
+    return max(prices_for(m)[field] for m in options) / 1_000_000
+
+
+def in_usd(model: str = MODEL) -> float:
+    return _reserve_price(model, "input_tokens")
+
+
+def out_usd(model: str = MODEL) -> float:
+    return _reserve_price(model, "output_tokens")
+
+
+IN_USD, OUT_USD = in_usd(), out_usd()  # reserve prices for the default (Opus) model
 CHARS_PER_TOKEN = 3  # cautious: English is usually ~4 characters per token
 # Measured in a real run (2026-10-09): each web search added ~23-34k input tokens of page text.
 TOKENS_PER_SEARCH = 35_000
@@ -63,14 +77,14 @@ class Meter:
         with self._lock:
             self.reserved = 0.0
 
-    def _hold(self, label: str, fixed_usd: float, max_tokens: int) -> tuple[int, float]:
+    def _hold(self, label: str, fixed_usd: float, max_tokens: int, out_price: float = OUT_USD) -> tuple[int, float]:
         with self._lock:
             room = self.limit - self.spent - self.held - self.reserved
-            allowed = min(max_tokens, int((room - fixed_usd) / OUT_USD))
+            allowed = min(max_tokens, int((room - fixed_usd) / out_price))
             if allowed < MIN_OUTPUT_TOKENS:
                 raise BudgetExceeded(
                     f"{label}: skipped - only ${max(room, 0):.2f} of the ${self.limit:.2f} budget is left")
-            hold = fixed_usd + allowed * OUT_USD
+            hold = fixed_usd + allowed * out_price
             self.held += hold
             return allowed, hold
 
@@ -80,25 +94,28 @@ class Meter:
             self.spent += cost
 
 
-def worst_case_input_usd(input_chars: int, searches: int = 0, extra_input_tokens: int = 0) -> float:
+def worst_case_input_usd(input_chars: int, searches: int = 0, extra_input_tokens: int = 0,
+                         model: str = MODEL) -> float:
     tokens = input_chars / CHARS_PER_TOKEN + searches * TOKENS_PER_SEARCH + extra_input_tokens
-    return tokens * IN_USD + searches * WEB_SEARCH_USD
+    return tokens * in_usd(model) + searches * WEB_SEARCH_USD
 
 
 def message_cost(message) -> float:
     server = getattr(message.usage, "server_tool_use", None)
     searches = getattr(server, "web_search_requests", 0) or 0
-    return estimate_cost(usage_dict(message)) + searches * WEB_SEARCH_USD
+    return estimate_cost(usage_dict(message), getattr(message, "model", None)) + searches * WEB_SEARCH_USD
 
 
 @contextmanager
-def budget_call(label: str, input_chars: int, max_tokens: int, searches: int = 0, extra_input_tokens: int = 0):
+def budget_call(label: str, input_chars: int, max_tokens: int, searches: int = 0, extra_input_tokens: int = 0,
+                model: str = MODEL):
     """Wrap one Claude call. Yields (max_tokens to use, settle function to call with the response)."""
     meter = _meter.get()
     if meter is None:
         yield max_tokens, lambda message: None
         return
-    allowed, hold = meter._hold(label, worst_case_input_usd(input_chars, searches, extra_input_tokens), max_tokens)
+    fixed = worst_case_input_usd(input_chars, searches, extra_input_tokens, model)
+    allowed, hold = meter._hold(label, fixed, max_tokens, out_usd(model))
     charged = {"cost": 0.0}
 
     def settle(message) -> None:

@@ -46,6 +46,8 @@ jobs:
           DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
           # Hard cost limit per run in USD (optional repo variable); default 2.
           PRD_AGENT_MAX_COST_USD: ${{ vars.PRD_AGENT_MAX_COST_USD }}
+          # Run profile (optional repo variable): "lean" aims at about $1 per run; default "standard".
+          PRD_AGENT_PROFILE: ${{ vars.PRD_AGENT_PROFILE }}
           # Passed as environment variables (never pasted into the script) to avoid injection.
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}

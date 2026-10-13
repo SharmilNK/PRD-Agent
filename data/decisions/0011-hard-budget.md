@@ -1,7 +1,7 @@
 # ADR-0011: Hard per-run cost limit, default $2
 
 - **Date:** 2026-10-13
-- **Status:** Accepted (replaces the soft budget in ADR-0010)
+- **Status:** Accepted (replaces the soft budget in ADR-0010); amounts updated by ADR-0012
 
 ## Context
 The first real run (2026-10-09) cost $5.93 although its budget was $5: the old budget was only checked *between* steps, and the revision step alone cost $1.25. The founder wants each run to cost at most $2.

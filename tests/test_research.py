@@ -148,7 +148,7 @@ class RunResearchTests(unittest.TestCase):
         self.assertEqual(result.accepted[0]["checks"]["grade"], "B")
         self.assertTrue(result.accepted[0]["checks"]["quote_found"])
         self.assertEqual(result.searches, 2)
-        self.assertAlmostEqual(result.cost_usd, (1000 * 4 + 2000 * 20) / 1e6 + 2 * 0.01)
+        self.assertAlmostEqual(result.cost_usd, (1000 * 2 + 2000 * 10) / 1e6 + 2 * 0.01)  # Sonnet prices
 
     def test_pause_turn_is_resumed(self):
         url = "https://example.org/a"

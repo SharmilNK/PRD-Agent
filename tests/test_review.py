@@ -114,10 +114,12 @@ class ReviewTests(unittest.TestCase):
 
     def test_revision_feedback(self):
         result = reviewer.review_prd(good_prd(), client=FakeClient(prd_review=sample_review(findings=[
-            {"severity": "major", "section": "13", "category": "observability", "issue": "No alerts.", "fix": "Add alerts."}])))
+            {"severity": "critical", "section": "13", "category": "observability", "issue": "No alerts.", "fix": "Add alerts."},
+            {"severity": "major", "section": "8", "category": "scope", "issue": "Vague goals.", "fix": "Add numbers."}])))
         quality = run_checks(good_prd(3), set(), {"scores": {"wow": {"score": 4}}}, NAMES)
         text = reviewer.revision_feedback(result, quality)
-        self.assertIn("[major] Section 13 (observability): No alerts. Fix: Add alerts.", text)
+        self.assertIn("[critical] Section 13 (observability): No alerts. Fix: Add alerts.", text)
+        self.assertNotIn("Vague goals", text)  # major findings go to GitHub issues, not a rewrite
         self.assertIn("is not from the checked research", text)
         self.assertIn("Wow factor: scorecard 4, PRD 3", text)
         self.assertNotIn("minor", text)
@@ -148,7 +150,7 @@ class OrchestratorReviewTests(unittest.TestCase):
         self.assertTrue((out / "quality.json").exists())
 
     def test_serious_findings_trigger_one_revision(self):
-        review = sample_review(findings=[{"severity": "major", "section": "10", "category": "security",
+        review = sample_review(findings=[{"severity": "critical", "section": "10", "category": "security",
                                           "issue": "No auth plan.", "fix": "Add one."}])
         client = FakeClient(prd_text=good_prd(), prd_review=review)
         metrics, out = self._run(client)
@@ -156,6 +158,14 @@ class OrchestratorReviewTests(unittest.TestCase):
         self.assertEqual(len(client.revision_calls), 1)
         self.assertTrue((out / "PRD.draft.md").exists())
         self.assertIn("No auth plan.", client.revision_calls[0]["messages"][0]["content"])
+
+    def test_major_findings_alone_do_not_trigger_a_rewrite(self):
+        review = sample_review(findings=[{"severity": "major", "section": "10", "category": "security",
+                                          "issue": "No auth plan.", "fix": "Add one."}])
+        client = FakeClient(prd_text=good_prd(), prd_review=review)
+        metrics, _ = self._run(client)
+        self.assertFalse(metrics["revised"])
+        self.assertEqual(client.revision_calls, [])
 
     def test_failed_checks_trigger_revision_even_without_review(self):
         client = FakeClient(prd_text=good_prd(score=3))  # scores differ from the scorecard
