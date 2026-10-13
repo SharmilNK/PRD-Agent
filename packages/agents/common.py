@@ -46,12 +46,14 @@ def create_message(client, *, system: str, user: str, effort: str, error: type[E
     output_config = {"effort": effort}
     if output_format:
         output_config["format"] = output_format
+    from packages.observability.budget import budget_call
     from packages.observability.tracing import span
 
-    with span(f"llm:{label}", effort=effort) as s:
+    with span(f"llm:{label}", effort=effort) as s, \
+            budget_call(label, len(system) + len(user), max_tokens) as (allowed, settle):
         message = get_client(client).beta.messages.create(
             model=MODEL,
-            max_tokens=max_tokens,
+            max_tokens=allowed,
             betas=[FALLBACK_BETA],
             thinking={"type": "adaptive"},
             output_config=output_config,
@@ -59,6 +61,7 @@ def create_message(client, *, system: str, user: str, effort: str, error: type[E
             messages=[{"role": "user", "content": user}],
             extra_body={"fallbacks": "default"},
         )
+        settle(message)
         s.record_message(message, system)
     if message.stop_reason == "refusal":
         raise error(f"{label}: model declined: {getattr(message, 'stop_details', None)}")
@@ -78,13 +81,21 @@ def run_tool_turn(client, *, system: str, user: str, tools: list[dict], effort: 
     client = get_client(client)
     messages = [{"role": "user", "content": user}]
     content, usage, searches = [], {}, 0
+    from packages.observability.budget import budget_call
     from packages.observability.tracing import span
 
+    # Worst case for the budget: every allowed search, and every fetched page at full size.
+    max_searches = sum(t.get("max_uses", 5) for t in tools if t["type"].startswith("web_search"))
+    fetch_tokens = sum(t.get("max_uses", 5) * t.get("max_content_tokens", 20000)
+                       for t in tools if t["type"].startswith("web_fetch"))
+
     for attempt in range(max_continuations + 1):
-        with span(f"llm:{label}", effort=effort, attempt=attempt, tools=[t["type"] for t in tools]) as s:
+        sent_chars = len(system) + len(user) + sum(len(str(b)) for b in content)
+        with span(f"llm:{label}", effort=effort, attempt=attempt, tools=[t["type"] for t in tools]) as s, \
+                budget_call(label, sent_chars, max_tokens, max_searches, fetch_tokens) as (allowed, settle):
             message = client.beta.messages.create(
                 model=MODEL,
-                max_tokens=max_tokens,
+                max_tokens=allowed,
                 betas=[FALLBACK_BETA],
                 thinking={"type": "adaptive"},
                 output_config={"effort": effort},
@@ -93,6 +104,7 @@ def run_tool_turn(client, *, system: str, user: str, tools: list[dict], effort: 
                 messages=messages,
                 extra_body={"fallbacks": "default"},
             )
+            settle(message)
             s.record_message(message, system)
         for k, v in usage_dict(message).items():
             usage[k] = usage.get(k, 0) + v

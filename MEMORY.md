@@ -31,6 +31,7 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 | 2026-10-08 | Gmail alerts via SMTP + app password (stdlib); events new/updated/blocked/quality_fail/error; section-level diff vs PRD before the run; HTML escaped; no secrets/addresses in metrics; alert.eml git-ignored (ADR-0008) |
 | 2026-10-08 | Dashboard: static HTML/CSS/JS (no framework), data.json built from git; validated dataviz palette; textContent for data, DOMPurify for PRD; serve.py live reload via /__version polling; Pages deploy on main + after prd-agent runs (ADR-0009) |
 | 2026-10-08 | Observability: in-house OTel-shaped JSONL traces in data/traces (metadata only, no text); per-run budget default $10 skips optional steps + budget alert; ops report (p50/p95, cost, errors, cache hit) in CLI and dashboard (ADR-0010) |
+| 2026-10-13 | Hard cost limit, default $2: every Claude call reserves its worst case first; $1.20 kept for the PRD Writer; research sequential when tight; searches 8/6/5 → 4/3/3 (ADR-0011) |
 | 2026-10-08 | Verdict rules clarified: Go = avg >= 3.5 and every criterion >= 3; No-Go = avg < 2.5 or ethics = 1; else Pivot |
 
 ## Current status
@@ -58,15 +59,18 @@ PRD-Agent turns a requirements transcript into a professional PRD.md using a tea
 3. After testing: fix whatever the first real runs reveal; consider Slack alerts and exporting traces to Langfuse.
 
 ## Open questions
+- At $2 on Opus 5.5 the full pipeline doesn't fit. Options offered: shorter PRD target, cheaper model for research/debate, or accept a leaner run.
 - GitHub Pages must be enabled (Settings → Pages → Source: GitHub Actions). Pages sites are public; confirm that's OK for PRDs.
 - Gmail alerts need a Gmail app password set as `GMAIL_ADDRESS` / `GMAIL_APP_PASSWORD` / `ALERT_TO` (local env or repo secrets). Not set up yet.
 - Cloud environment: allow `pypi.org` and `files.pythonhosted.org` so the SDK can be installed and tested in cloud sessions?
 
 ## Known issues
+- First full real run (2026-10-09, Action): worked end to end — quality gate PASS, verdict Pivot, rubric 3.8 — but cost $5.93 (budget $5 overshot) and took 27 min. Research ~$2.47, PRD Writer $1.00, revision $1.25. The PRD is ~112k characters (very long).
 - First Action run (2026-10-09) failed: Anthropic API credit balance too low (user must add API credits). Also exposed a bug: commit step failed when `data/traces` didn't exist; fixed on branch `claude/optimistic-faraday-rl7bty`.
 - PyPI blocked in the cloud environment → real API runs must happen on the user's computer for now.
 
 ## Session log (newest first)
+- 2026-10-13 — User wants max $2 per run. Added a hard budget (reserve before every call), PR open from `claude/optimistic-faraday-rl7bty`.
 - 2026-10-09 — First real Action run: credit error (billing) + commit-step bug (fixed: add only existing folders, data/traces/.gitkeep, flushed CI logs).
 - 2026-10-08 — Built Phase 9 (observability). All phases 0-9 built; PRs #9-#11 + Phase 9 PR open into main.
 - 2026-10-08 — Built Phase 8 (dashboard). Screenshot-checked light/dark/mobile; live reload verified in a real browser.

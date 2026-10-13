@@ -20,7 +20,7 @@ from packages.agents.research import sources
 from packages.agents.research.config import AGENTS
 
 PROMPTS_DIR = Path(__file__).with_name("prompts")
-MAX_TOKENS = 16000
+MAX_TOKENS = 10000  # real runs used up to ~7.6k (answer + thinking)
 EFFORT = "medium"
 MAX_CONTINUATIONS = 3
 

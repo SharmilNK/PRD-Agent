@@ -44,7 +44,7 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           ALERT_TO: ${{ secrets.ALERT_TO }}
           DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
-          # Cost limit per run in USD (optional repo variable); default 10.
+          # Hard cost limit per run in USD (optional repo variable); default 2.
           PRD_AGENT_MAX_COST_USD: ${{ vars.PRD_AGENT_MAX_COST_USD }}
           # Passed as environment variables (never pasted into the script) to avoid injection.
           BEFORE_SHA: ${{ github.event.before }}

@@ -18,6 +18,7 @@ from packages.agents.common import (
     text_of,
     usage_dict,
 )
+from packages.observability.budget import budget_call
 from packages.observability.tracing import span
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -114,9 +115,12 @@ def write_prd(transcript: str, client=None, notes: list[str] | None = None, rese
     # Streaming avoids HTTP timeouts on long outputs.
     # fallbacks="default": if a safety classifier declines, the API retries on
     # a suitable fallback model inside the same call.
-    with span("llm:prd writer", effort=EFFORT, revision=bool(draft)) as s, client.beta.messages.stream(
+    label = "prd writer revision" if draft else "prd writer"
+    with span(f"llm:{label}", effort=EFFORT, revision=bool(draft)) as s, \
+            budget_call(label, len(system_prompt) + len(user_message), MAX_TOKENS) as (allowed, settle), \
+            client.beta.messages.stream(
         model=MODEL,
-        max_tokens=MAX_TOKENS,
+        max_tokens=allowed,
         betas=[FALLBACK_BETA],
         thinking={"type": "adaptive"},
         output_config={"effort": EFFORT},
@@ -125,6 +129,7 @@ def write_prd(transcript: str, client=None, notes: list[str] | None = None, rese
         extra_body={"fallbacks": "default"},
     ) as stream:
         message = stream.get_final_message()
+        settle(message)
         s.record_message(message, system_prompt)
 
     if message.stop_reason == "refusal":
