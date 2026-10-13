@@ -15,12 +15,13 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from packages.agents.common import WEB_SEARCH_USD, estimate_cost, run_tool_turn, text_of
+from packages.agents.common import MODELS, WEB_SEARCH_USD, estimate_cost, run_tool_turn, text_of
 from packages.agents.research import sources
 from packages.agents.research.config import AGENTS
 
 PROMPTS_DIR = Path(__file__).with_name("prompts")
-MAX_TOKENS = 16000
+MODEL = MODELS["research"]
+MAX_TOKENS = 10000  # real runs used up to ~7.6k (answer + thinking)
 EFFORT = "medium"
 MAX_CONTINUATIONS = 3
 
@@ -42,7 +43,7 @@ class ResearchResult:
 
     @property
     def cost_usd(self) -> float:
-        return round(estimate_cost(self.usage) + self.searches * WEB_SEARCH_USD, 6)
+        return round(estimate_cost(self.usage, self.model) + self.searches * WEB_SEARCH_USD, 6)
 
     def to_json(self) -> dict:
         return {
@@ -62,9 +63,9 @@ def system_prompt(kind: str) -> str:
     return (PROMPTS_DIR / "base.md").read_text() + "\n\n" + (PROMPTS_DIR / f"{kind}.md").read_text()
 
 
-def search_tool(kind: str) -> dict:
+def search_tool(kind: str, max_searches: int | None = None) -> dict:
     cfg = AGENTS[kind]
-    tool = {"type": "web_search_20260209", "name": "web_search", "max_uses": cfg["max_searches"]}
+    tool = {"type": "web_search_20260209", "name": "web_search", "max_uses": max_searches or cfg["max_searches"]}
     if cfg["allowed_domains"]:
         tool["allowed_domains"] = cfg["allowed_domains"]
     return tool
@@ -99,7 +100,7 @@ def collect_evidence(content: list) -> tuple[dict[str, dict], dict[str, list[str
     return results, citations
 
 
-def run_research(kind: str, transcript: str, client=None) -> ResearchResult:
+def run_research(kind: str, transcript: str, client=None, max_searches: int | None = None) -> ResearchResult:
     if kind not in AGENTS:
         raise ValueError(f"Unknown research agent: {kind}")
     cfg = AGENTS[kind]
@@ -109,11 +110,12 @@ def run_research(kind: str, transcript: str, client=None) -> ResearchResult:
         system=system_prompt(kind),
         user="Research this product idea. Use your focus topics.\n\n"
              f"<transcript>\n{transcript.strip()}\n</transcript>",
-        tools=[search_tool(kind)],
+        tools=[search_tool(kind, max_searches)],
         effort=EFFORT,
         error=ResearchError,
         label=kind,
         max_tokens=MAX_TOKENS,
+        model=MODEL,
         max_continuations=MAX_CONTINUATIONS,
     )
 

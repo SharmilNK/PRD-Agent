@@ -39,12 +39,13 @@ import os
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 
 from apps.orchestrator.publish import publish, read_prd
 from evals.quality_checks import run_checks
-from packages.agents.common import WEB_SEARCH_USD
+from packages.agents.common import MODELS, WEB_SEARCH_USD
 from packages.agents.debate import agent as debate
 from packages.agents.guardrails import agent as guardrails
 from packages.agents.prd_writer import agent as prd_writer
@@ -52,6 +53,8 @@ from packages.agents.research import agent as research
 from packages.agents.research.config import AGENTS as RESEARCH_AGENTS
 from packages.agents.reviewer import agent as reviewer
 from packages.agents.scorer import agent as scorer
+from packages.observability.budget import BudgetExceeded, Meter, out_usd, worst_case_input_usd
+from packages.observability.budget import current as current_meter
 from packages.observability.tracing import Tracer, run_in_context, span
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -73,32 +76,80 @@ def _timed(name: str, fn, *args, **kwargs):
     return result, round(time.monotonic() - started, 2)
 
 
+# Money kept for the PRD Writer so the PRD is always written: its longest possible answer
+# (MAX_TOKENS) plus ~$0.10 of input, at the fallback-safe reserve price.
+PRD_RESERVE_USD = round(prd_writer.MAX_TOKENS * out_usd(prd_writer.MODEL) + 0.10, 2)
+MIN_BUDGET_USD = round(PRD_RESERVE_USD + 0.05, 2)
+# Don't start an optional step with less than this left: it would be cut short or refused.
+MIN_STEP_USD = {"research": 0.25, "debate": 0.25, "reviewer": 0.20, "revision": 0.40}
+
+
+# Run profiles. "lean" trades some depth for cost (aim: about $1 per run).
+PROFILES = {
+    "standard": {"searches": {}, "debate_rounds": debate.ROUNDS, "check_links": True,
+                 "prd_effort": prd_writer.EFFORT},
+    "lean": {"searches": {"market": 1, "standards": 1, "tech": 1}, "debate_rounds": 1, "check_links": False,
+             "prd_effort": "low"},
+}
+
+
+def default_profile() -> str:
+    """PRD_AGENT_PROFILE=lean switches every run to lean mode (e.g. in the GitHub Action)."""
+    name = (os.environ.get("PRD_AGENT_PROFILE") or "standard").strip().lower()
+    return name if name in PROFILES else "standard"
+
+
 class Budget:
-    """Spending limit for one run. Once reached, optional steps are skipped (the PRD is still written)."""
+    """Hard spending limit for one run. Every Claude call reserves its worst case before it starts
+    (packages/observability/budget.py), so the run can never go over the limit. Optional steps are
+    skipped when money runs out; money is set aside so the PRD is still written."""
 
     def __init__(self, limit_usd: float | None):
+        if limit_usd is not None and limit_usd < MIN_BUDGET_USD:
+            raise ValueError(f"Budget ${limit_usd:.2f} is too small: a PRD needs at least ${MIN_BUDGET_USD:.2f}.")
         self.limit = limit_usd
+        self.meter = Meter(limit_usd) if limit_usd is not None else None
         self.skipped: list[str] = []
 
-    def allows(self, step: str, steps: list[dict]) -> bool:
-        if self.limit is None or sum(s["cost_usd"] for s in steps) < self.limit:
+    def allows(self, step: str) -> bool:
+        if self.meter is None or self.meter.available() >= MIN_STEP_USD.get(step, 0.0):
             return True
         self.skipped.append(step)
         return False
 
+    def reserve_for_prd(self) -> None:
+        if self.meter:
+            self.meter.reserve(PRD_RESERVE_USD)
+
+    def release_reserve(self) -> None:
+        if self.meter:
+            self.meter.release_reserve()
+
+    def note_refusals(self, steps: list[dict]) -> None:
+        """Steps whose Claude call was refused by the budget count as skipped."""
+        for s in steps:
+            if "BudgetExceeded" in s.get("error", "") and s["agent"] not in self.skipped:
+                self.skipped.append(s["agent"])
+
+    def summary(self, steps: list[dict]) -> dict:
+        spent = self.meter.spent if self.meter else sum(s["cost_usd"] for s in steps)
+        return {"limit_usd": self.limit, "spent_usd": round(spent, 6), "skipped": self.skipped,
+                "hard_limit": self.meter is not None}
+
 
 def default_budget() -> float | None:
-    """PRD_AGENT_MAX_COST_USD, default $10 (also when empty). Set it to 0 or 'none' for no limit."""
-    raw = (os.environ.get("PRD_AGENT_MAX_COST_USD") or "10").strip().lower()
+    """PRD_AGENT_MAX_COST_USD, default $2 (also when empty). Set it to 0 or 'none' for no limit."""
+    raw = (os.environ.get("PRD_AGENT_MAX_COST_USD") or "2").strip().lower()
     return None if raw in ("0", "none") else float(raw)
 
 
-def _research_one(kind: str, transcript: str, client) -> tuple[str, object, float]:
+def _research_one(kind: str, transcript: str, client, searches: dict | None = None) -> tuple[str, object, float]:
     """Run one research agent. A failure is returned, not raised, so the other agents still count."""
     started = time.monotonic()
     try:
         with span(f"step:research:{kind}"):
-            result = research.run_research(kind, transcript, client=client)
+            result = research.run_research(kind, transcript, client=client,
+                                           max_searches=(searches or {}).get(kind))
     except ImportError:
         raise
     except Exception as e:  # noqa: BLE001 - one failed agent must not stop the run
@@ -106,12 +157,26 @@ def _research_one(kind: str, transcript: str, client) -> tuple[str, object, floa
     return kind, result, round(time.monotonic() - started, 2)
 
 
-def run_research_step(transcript: str, client, out_dir: Path) -> tuple[list, dict, list[dict]]:
-    """Run all research agents in parallel. Returns (results, failures, metric steps)."""
-    with ThreadPoolExecutor(max_workers=len(RESEARCH_AGENTS)) as pool:
-        # run_in_context: each thread's spans join this run's trace.
-        jobs = [run_in_context(_research_one, k, transcript, client) for k in RESEARCH_AGENTS]
-        outcomes = [f.result() for f in [pool.submit(job) for job in jobs]]
+def research_worst_case_usd(transcript: str, searches: dict | None = None) -> float:
+    """What all research agents could cost together, at most."""
+    searches = searches or {}
+    return sum(worst_case_input_usd(len(transcript) + len(research.system_prompt(k)),
+                                    searches.get(k, cfg["max_searches"]), model=research.MODEL)
+               + research.MAX_TOKENS * out_usd(research.MODEL) for k, cfg in RESEARCH_AGENTS.items())
+
+
+def run_research_step(transcript: str, client, out_dir: Path, searches: dict | None = None) -> tuple[list, dict, list[dict]]:
+    """Run the research agents: in parallel when the budget can cover all of them at once,
+    otherwise one after another in priority order (market, standards, tech) so the most
+    important ones get the money first. Returns (results, failures, metric steps)."""
+    meter = current_meter()
+    if meter is None or meter.available() >= research_worst_case_usd(transcript, searches):
+        with ThreadPoolExecutor(max_workers=len(RESEARCH_AGENTS)) as pool:
+            # run_in_context: each thread's spans (and the budget meter) join this run.
+            jobs = [run_in_context(_research_one, k, transcript, client, searches) for k in RESEARCH_AGENTS]
+            outcomes = [f.result() for f in [pool.submit(job) for job in jobs]]
+    else:
+        outcomes = [_research_one(k, transcript, client, searches) for k in RESEARCH_AGENTS]
 
     research_dir = out_dir / "research"
     research_dir.mkdir(parents=True, exist_ok=True)
@@ -139,14 +204,16 @@ def run_research_step(transcript: str, client, out_dir: Path) -> tuple[list, dic
     return results, failed, steps
 
 
-def run_evaluation_step(transcript: str, brief: str, notes: list[str], client, out_dir: Path) -> tuple[str, list[dict], dict]:
+def run_evaluation_step(transcript: str, brief: str, notes: list[str], client, out_dir: Path,
+                        rounds: int = debate.ROUNDS) -> tuple[str, list[dict], dict]:
     """Debate, then Scorer. Returns (evaluation text for the PRD Writer, metric steps, summary).
 
     A failure is recorded and the run continues; the PRD Writer then scores on its own.
     """
     steps, summary = [], {}
     try:
-        result, d_time = _timed("debate", debate.run_debate, transcript, research=brief, notes=notes, client=client)
+        result, d_time = _timed("debate", debate.run_debate, transcript, research=brief, notes=notes,
+                                client=client, rounds=rounds)
     except ImportError:
         raise
     except Exception as e:  # noqa: BLE001
@@ -155,7 +222,7 @@ def run_evaluation_step(transcript: str, brief: str, notes: list[str], client, o
 
     debate_md = result.transcript_md()
     (out_dir / "debate.md").write_text(debate_md)
-    steps.append({"agent": "debate", "model": result.model, "calls": result.calls, "rounds": debate.ROUNDS,
+    steps.append({"agent": "debate", "model": result.model, "calls": result.calls, "rounds": rounds,
                   "usage": result.usage, "cost_usd": result.cost_usd, "duration_s": d_time})
     try:
         scores, s_time = _timed("scorer", scorer.run_scorer, transcript, research=brief, debate_md=debate_md, client=client)
@@ -189,28 +256,34 @@ def run(
     revise: bool = True,
     budget_usd: float | None | str = "default",
     traces_dir: Path | None = None,
+    profile: str | None = None,
 ) -> dict:
     """Run the pipeline with tracing and a cost budget. Writes the PRD, metrics and the trace."""
     name = transcript_path.stem
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + f"-{name}"
     budget = Budget(default_budget() if budget_usd == "default" else budget_usd)
+    profile = profile or default_profile()
     tracer = Tracer(run_id)
-    with tracer.active(), span("run", transcript=name) as root:
+    with tracer.active(), (budget.meter.active() if budget.meter else nullcontext()), \
+            span("run", transcript=name) as root:
         metrics = _pipeline(transcript_path, run_id, budget, client, outputs_dir, guardrail_review,
-                            do_research, do_debate, do_review, revise)
+                            do_research, do_debate, do_review, revise, PROFILES[profile])
+        metrics["profile"] = profile
         root.set(status=metrics["status"], cost_usd=metrics["total_cost_usd"])
+    budget.note_refusals(metrics["steps"])
 
     traces_dir = traces_dir or metrics_dir.parent / "traces"
     trace_path = tracer.save(traces_dir / f"{run_id}.jsonl")
     metrics["trace"] = {"file": str(trace_path), **tracer.summary()}
-    metrics["budget"] = {"limit_usd": budget.limit, "spent_usd": metrics["total_cost_usd"], "skipped": budget.skipped}
+    metrics["budget"] = budget.summary(metrics["steps"])
     metrics_dir.mkdir(parents=True, exist_ok=True)
     (metrics_dir / f"{run_id}.json").write_text(json.dumps(metrics, indent=2) + "\n")
     return metrics
 
 
 def _pipeline(transcript_path: Path, run_id: str, budget: Budget, client, outputs_dir: Path,
-              guardrail_review: bool, do_research: bool, do_debate: bool, do_review: bool, revise: bool) -> dict:
+              guardrail_review: bool, do_research: bool, do_debate: bool, do_review: bool, revise: bool,
+              settings: dict) -> dict:
     transcript = transcript_path.read_text()
     name = transcript_path.stem
     out_dir = outputs_dir / name
@@ -236,27 +309,31 @@ def _pipeline(transcript_path: Path, run_id: str, budget: Budget, client, output
     }
 
     if report.decision != "block":
+        budget.reserve_for_prd()
+
         # Step 2: Research
         brief, research_results = "", []
-        if do_research and budget.allows("research", steps):
+        if do_research and budget.allows("research"):
             with span("step:research"):
-                research_results, failed, research_steps = run_research_step(report.sanitized_transcript, client, out_dir)
+                research_results, failed, research_steps = run_research_step(
+                    report.sanitized_transcript, client, out_dir, settings["searches"])
             steps.extend(research_steps)
             metrics["research_failed"] = failed
             brief = (out_dir / "research_brief.md").read_text()
 
         # Steps 3-4: Debate and Scorer
         evaluation = ""
-        if do_debate and budget.allows("debate", steps):
+        if do_debate and budget.allows("debate"):
             evaluation, eval_steps, metrics["evaluation"] = run_evaluation_step(
-                report.sanitized_transcript, brief, report.notes_for_prd, client, out_dir
+                report.sanitized_transcript, brief, report.notes_for_prd, client, out_dir, settings["debate_rounds"]
             )
             steps.extend(eval_steps)
 
-        # Step 5: PRD Writer
+        # Step 5: PRD Writer (gets the reserved money plus whatever is left)
+        budget.release_reserve()
         result, p_time = _timed(
             "prd_writer", prd_writer.write_prd, report.sanitized_transcript, client=client,
-            notes=report.notes_for_prd, research=brief, evaluation=evaluation,
+            notes=report.notes_for_prd, research=brief, evaluation=evaluation, effort=settings["prd_effort"],
         )
         prd_path = out_dir / "PRD.md"
         prd_path.write_text(result.markdown)
@@ -274,10 +351,11 @@ def _pipeline(transcript_path: Path, run_id: str, budget: Budget, client, output
 
         # Step 7: Reviewer
         review = None
-        if do_review and budget.allows("reviewer", steps):
+        if do_review and budget.allows("reviewer"):
             try:
                 review, r_time = _timed("reviewer", reviewer.review_prd, prd, evaluation=evaluation, research=brief,
-                                        quality=quality, claims=claims, client=client)
+                                        quality=quality, claims=claims, client=client,
+                                        check_sources=settings["check_links"])
             except ImportError:
                 raise
             except Exception as e:  # noqa: BLE001 - a failed review must not lose the PRD
@@ -299,12 +377,13 @@ def _pipeline(transcript_path: Path, run_id: str, budget: Budget, client, output
         # Step 8: one revision if needed
         metrics["revised"] = False
         if revise and ((review and review.needs_revision) or not quality["passed"]) \
-                and budget.allows("revision", steps):
+                and budget.allows("revision"):
             feedback = reviewer.revision_feedback(review, quality)
             try:
                 revised, v_time = _timed(
                     "prd_writer:revision", prd_writer.write_prd, report.sanitized_transcript, client=client, notes=report.notes_for_prd,
                     research=brief, evaluation=evaluation, draft=prd, feedback=feedback,
+                    effort=settings["prd_effort"],
                 )
             except ImportError:
                 raise
@@ -333,7 +412,7 @@ def _pipeline(transcript_path: Path, run_id: str, budget: Budget, client, output
     return metrics
 
 
-def dry_run(transcript_path: Path) -> None:
+def dry_run(transcript_path: Path, profile: str | None = None) -> None:
     """Show what would happen, without calling the API (only the free rule-based guardrails run)."""
     report = guardrails.run_guardrails(transcript_path.read_text(), use_llm=False)
     system_prompt = prd_writer.build_system_prompt()
@@ -341,15 +420,23 @@ def dry_run(transcript_path: Path) -> None:
     print(f"Guardrails (rules only): {report.decision}")
     for reason in report.reasons:
         print(f"  - {reason}")
-    print(f"Model:          {prd_writer.MODEL} (PRD effort={prd_writer.EFFORT}, guardrails effort={guardrails.EFFORT})")
+    profile = profile or default_profile()
+    settings = PROFILES[profile]
+    print(f"Profile:        {profile}" + (" (fewer searches, 1 debate round, no link check, less PRD thinking)"
+                                         if profile == "lean" else ""))
+    print("Models:         " + ", ".join(f"{agent} {model.replace('claude-', '')}" for agent, model in MODELS.items()))
     print(f"Prompt version: {prd_writer.prompt_version(system_prompt)}")
-    print("Research agents (in parallel):")
+    print("Research agents (in parallel when the budget allows, else one by one):")
     for kind, cfg in RESEARCH_AGENTS.items():
         sites = f"{len(cfg['allowed_domains'])} official sites only" if cfg["allowed_domains"] else "open web, graded"
-        print(f"  - {kind}: up to {cfg['max_searches']} searches, {sites}")
-    max_search_cost = sum(c["max_searches"] for c in RESEARCH_AGENTS.values()) * WEB_SEARCH_USD
+        print(f"  - {kind}: up to {settings['searches'].get(kind, cfg['max_searches'])} searches, {sites}")
+    max_search_cost = sum(settings["searches"].get(k, c["max_searches"])
+                          for k, c in RESEARCH_AGENTS.items()) * WEB_SEARCH_USD
     print(f"  Max search cost: ${max_search_cost:.2f} (plus tokens)")
-    print(f"Debate:         {debate.ROUNDS} rounds, {2 * debate.ROUNDS + 2} calls "
+    lim = default_budget()
+    print(f"Budget:         " + (f"${lim:.2f} hard limit (${PRD_RESERVE_USD:.2f} kept for the PRD Writer)" if lim else "no limit"))
+    rounds = settings["debate_rounds"]
+    print(f"Debate:         {rounds} round(s), {2 * rounds + 2} calls "
           "(Advocate has full context; Skeptic sees only the pitch)")
     print(f"Scorer:         GUCCI + {len(scorer.load_scorecard()['criteria'])} criteria; verdict computed by code")
     print(f"Reviewer:       opens up to {reviewer.MAX_LINKS} cited links; scores on "
@@ -383,14 +470,17 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--github-issues", action="store_true",
                         help="create/update GitHub issues (needs GITHUB_TOKEN and GITHUB_REPOSITORY)")
     parser.add_argument("--budget", type=float, default=None,
-                        help="max cost in USD for this run (default: PRD_AGENT_MAX_COST_USD or 10); "
-                             "optional steps are skipped once it is reached")
+                        help="hard cost limit in USD for this run (default: PRD_AGENT_MAX_COST_USD or 2); "
+                             "the run never goes over it - optional steps are skipped instead")
+    parser.add_argument("--lean", action="store_true",
+                        help="cheaper run (aim ~$1): 1 search per research agent, 1 debate round, "
+                             "no link checks, less PRD thinking (or set PRD_AGENT_PROFILE=lean)")
     parser.add_argument("--alert", action="store_true",
                         help="email a Gmail alert if the PRD is new/updated or the run had problems")
     args = parser.parse_args(argv)
 
     if args.dry_run:
-        dry_run(args.transcript)
+        dry_run(args.transcript, "lean" if args.lean else None)
         return 0
 
     old_prd = read_prd(OUTPUTS_DIR, args.transcript)
@@ -398,11 +488,12 @@ def main(argv: list[str]) -> int:
         metrics = run(args.transcript, guardrail_review=not args.skip_guardrail_review,
                       do_research=not args.skip_research, do_debate=not args.skip_debate,
                       do_review=not args.skip_review, revise=not args.no_revise,
-                      budget_usd="default" if args.budget is None else args.budget)
+                      budget_usd="default" if args.budget is None else args.budget,
+                      profile="lean" if args.lean else None)
     except ImportError:
         print("The anthropic package is missing. Run: pip install -r requirements.txt", file=sys.stderr)
         return 1
-    except (guardrails.GuardrailsError, prd_writer.PRDWriterError) as e:
+    except (guardrails.GuardrailsError, prd_writer.PRDWriterError, BudgetExceeded, ValueError) as e:
         print(f"Run failed: {e}", file=sys.stderr)
         return 1
 
@@ -457,8 +548,9 @@ def main(argv: list[str]) -> int:
           f"avg sentence {q['readability']['avg_sentence_words']} words")
     print(f"Quality gate:    {metrics['quality_gate'].upper()}")
     b, t = metrics["budget"], metrics["trace"]
-    if b["skipped"]:
-        print(f"Budget:          ${b['limit_usd']:.2f} reached - skipped: {', '.join(b['skipped'])}")
+    if b["limit_usd"] is not None:
+        print(f"Budget:          ${b['spent_usd']:.2f} of ${b['limit_usd']:.2f} used"
+              + (f" - skipped to stay under: {', '.join(b['skipped'])}" if b["skipped"] else ""))
     print(f"Trace:           {t['llm_calls']} Claude calls, cache hit {t['cache_hit_rate']:.0%}, {t['file']}")
     return 0
 

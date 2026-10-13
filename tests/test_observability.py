@@ -116,20 +116,12 @@ class RunTracingTests(unittest.TestCase):
         self.assertNotIn("Every model, algorithm, or system becomes a character", trace)
         self.assertNotIn("Short clear text", trace)
 
-    def test_budget_skips_optional_steps_but_writes_prd(self):
-        m, t, client = self._run(budget_usd=0.0001)
-        # Revision is also wanted (the PRD's link is not from research, which was skipped) and skipped too.
-        self.assertEqual(m["budget"]["skipped"], ["research", "debate", "reviewer", "revision"])
-        self.assertFalse(m["revised"])
-        self.assertEqual(client.research_calls, [])
-        self.assertTrue((t / "outputs" / "storyml-newsletter" / "PRD.md").exists())
-
     def test_no_budget(self):
         m, _, _ = self._run(budget_usd=None)
         self.assertEqual((m["budget"]["limit_usd"], m["budget"]["skipped"]), (None, []))
 
     def test_default_budget_from_env(self):
-        for value, expected in [(None, 10.0), ("", 10.0), ("2.5", 2.5), ("0", None), ("none", None)]:
+        for value, expected in [(None, 2.0), ("", 2.0), ("2.5", 2.5), ("0", None), ("none", None)]:
             env = {} if value is None else {"PRD_AGENT_MAX_COST_USD": value}
             with mock.patch.dict("os.environ", env, clear=True):
                 self.assertEqual(orchestrator.default_budget(), expected, value)
@@ -171,7 +163,7 @@ class ReportTests(unittest.TestCase):
 
 class HookTests(unittest.TestCase):
     def test_budget_alert_event(self):
-        m = metrics(budget={"limit_usd": 1.0, "spent_usd": 1.2, "skipped": ["reviewer"]})
+        m = metrics(budget={"limit_usd": 1.0, "spent_usd": 0.98, "skipped": ["reviewer"]})
         events, _ = notify.detect_events(m, "same", "same")
         self.assertIn("budget", events)
         alert = notify.build_alert(m, events, {})

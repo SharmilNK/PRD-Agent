@@ -16,16 +16,18 @@ from pathlib import Path
 
 from packages.agents.common import (
     FALLBACK_BETA,
-    MODEL,
+    MODELS,
     estimate_cost,
     get_client,
     text_of,
     usage_dict,
 )
 from packages.agents.guardrails.checks import MAX_CHARS, find_injection, mask_pii
+from packages.observability.budget import budget_call
 from packages.observability.tracing import span
 
 PROMPT_PATH = Path(__file__).with_name("prompt.md")
+MODEL = MODELS["guardrails"]
 MAX_TOKENS = 16000
 EFFORT = "low"
 
@@ -70,7 +72,7 @@ class GuardrailReport:
 
     @property
     def cost_usd(self) -> float:
-        return estimate_cost(self.usage)
+        return estimate_cost(self.usage, self.model)
 
     def to_json(self) -> dict:
         """Report for saving. Leaves out the transcript text itself."""
@@ -84,10 +86,11 @@ def review_with_claude(sanitized: str, client=None) -> tuple[dict, str, dict]:
     """Ask Claude to review the (already masked) transcript. Returns (review, model, usage)."""
     client = get_client(client)
     system = PROMPT_PATH.read_text()
-    with span("llm:guardrails review", effort=EFFORT) as s:
+    with span("llm:guardrails review", effort=EFFORT) as s, \
+            budget_call("guardrails review", len(system) + len(sanitized), MAX_TOKENS, model=MODEL) as (allowed, settle):
         message = client.beta.messages.create(
             model=MODEL,
-            max_tokens=MAX_TOKENS,
+            max_tokens=allowed,
             betas=[FALLBACK_BETA],
             thinking={"type": "adaptive"},
             output_config={
@@ -101,6 +104,7 @@ def review_with_claude(sanitized: str, client=None) -> tuple[dict, str, dict]:
             }],
             extra_body={"fallbacks": "default"},
         )
+        settle(message)
         s.record_message(message, system)
     if message.stop_reason == "refusal":
         raise GuardrailsError(f"Model declined the review: {getattr(message, 'stop_details', None)}")

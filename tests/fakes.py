@@ -18,14 +18,14 @@ ALLOW_REVIEW = {
 }
 
 
-def _message(text, stop_reason="end_turn", extra_blocks=(), searches=0, citations=()):
+def _message(text, stop_reason="end_turn", extra_blocks=(), searches=0, citations=(), model=MODEL):
     usage = SimpleNamespace(input_tokens=1000, output_tokens=2000,
                             cache_creation_input_tokens=0, cache_read_input_tokens=None,
                             server_tool_use=SimpleNamespace(web_search_requests=searches))
     text_block = SimpleNamespace(type="text", text=text, citations=list(citations))
     return SimpleNamespace(
         content=[SimpleNamespace(type="thinking", thinking=""), *extra_blocks, text_block],
-        stop_reason=stop_reason, stop_details=None, model=MODEL, usage=usage,
+        stop_reason=stop_reason, stop_details=None, model=model, usage=usage,
     )
 
 
@@ -100,6 +100,14 @@ def link_message(checks, pages=()):
     return _message(text, extra_blocks=[fetch_result_block(u, t) for u, t in pages])
 
 
+def _echo_model(message, kwargs):
+    """Answer with the model that was asked for (the real API does the same)."""
+    from copy import copy
+    echoed = copy(message)
+    echoed.model = kwargs.get("model", MODEL)
+    return echoed
+
+
 class _Stream:
     def __init__(self, message):
         self.message = message
@@ -140,9 +148,12 @@ class FakeClient:
         if "<draft_prd>" in kwargs["messages"][0]["content"]:
             self.revision_calls.append(kwargs)
         self.stream_calls.append(kwargs)
-        return _Stream(self._prd)
+        return _Stream(_echo_model(self._prd, kwargs))
 
     def _create(self, **kwargs):
+        return _echo_model(self._create_inner(**kwargs), kwargs)
+
+    def _create_inner(self, **kwargs):
         if "tools" in kwargs and kwargs["tools"][0]["type"].startswith("web_fetch"):
             self.link_calls.append(kwargs)
             if "link_check" in self._fail:

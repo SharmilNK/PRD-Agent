@@ -12,12 +12,13 @@ from pathlib import Path
 
 from packages.agents.common import (
     FALLBACK_BETA,
-    MODEL,
+    MODELS,
     estimate_cost,
     get_client,
     text_of,
     usage_dict,
 )
+from packages.observability.budget import budget_call
 from packages.observability.tracing import span
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -25,8 +26,10 @@ PROMPT_PATH = Path(__file__).with_name("prompt.md")
 TEMPLATE_PATH = REPO_ROOT / "packages" / "templates" / "PRD_TEMPLATE.md"
 SCORECARD_PATH = REPO_ROOT / "packages" / "frameworks" / "scorecard.json"
 
-MAX_TOKENS = 64000
-EFFORT = "high"
+MODEL = MODELS["prd_writer"]
+# A short PRD is ~6-8k tokens plus thinking. (The first real run wrote a ~28k-token PRD: too long.)
+MAX_TOKENS = 32000
+EFFORT = "medium"
 
 
 class PRDWriterError(RuntimeError):
@@ -43,7 +46,7 @@ class PRDResult:
 
     @property
     def cost_usd(self) -> float:
-        return estimate_cost(self.usage)
+        return estimate_cost(self.usage, self.model)
 
 
 def build_system_prompt() -> str:
@@ -92,7 +95,7 @@ def build_user_message(transcript: str, notes: list[str] | None = None, research
 
 
 def write_prd(transcript: str, client=None, notes: list[str] | None = None, research: str = "",
-              evaluation: str = "", draft: str = "", feedback: str = "") -> PRDResult:
+              evaluation: str = "", draft: str = "", feedback: str = "", effort: str = EFFORT) -> PRDResult:
     """Call Claude once and return the PRD Markdown plus usage numbers.
 
     With `draft` and `feedback`, Claude revises the draft instead of writing from scratch.
@@ -114,17 +117,21 @@ def write_prd(transcript: str, client=None, notes: list[str] | None = None, rese
     # Streaming avoids HTTP timeouts on long outputs.
     # fallbacks="default": if a safety classifier declines, the API retries on
     # a suitable fallback model inside the same call.
-    with span("llm:prd writer", effort=EFFORT, revision=bool(draft)) as s, client.beta.messages.stream(
+    label = "prd writer revision" if draft else "prd writer"
+    with span(f"llm:{label}", effort=effort, revision=bool(draft)) as s, \
+            budget_call(label, len(system_prompt) + len(user_message), MAX_TOKENS, model=MODEL) as (allowed, settle), \
+            client.beta.messages.stream(
         model=MODEL,
-        max_tokens=MAX_TOKENS,
+        max_tokens=allowed,
         betas=[FALLBACK_BETA],
         thinking={"type": "adaptive"},
-        output_config={"effort": EFFORT},
+        output_config={"effort": effort},
         system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user_message}],
         extra_body={"fallbacks": "default"},
     ) as stream:
         message = stream.get_final_message()
+        settle(message)
         s.record_message(message, system_prompt)
 
     if message.stop_reason == "refusal":
